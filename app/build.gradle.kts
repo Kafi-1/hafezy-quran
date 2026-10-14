@@ -98,7 +98,12 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
 
     // --- PDF rendering ---
-    implementation(libs.pdfium)
+    // pdfium-android still declares a legacy `com.android.support` dependency,
+    // which collides with AndroidX (duplicate android.support.v4.app.* classes).
+    // This app is AndroidX-only, so drop the old support artifacts entirely.
+    implementation(libs.pdfium) {
+        exclude(group = "com.android.support")
+    }
 
     // --- JSON (tasbeeh.json) ---
     implementation(libs.kotlinx.serialization.json)
