@@ -23,13 +23,21 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install required SDK packages
+      # The ubuntu runner already ships the Android SDK; we just point Gradle at
+      # it and top up the exact platform/build-tools we compile against. (The
+      # android-actions/setup-android action is intentionally avoided: on current
+      # runner images it fails trying to install the retired "tools" package.)
+      - name: Configure Android SDK
         run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "Using Android SDK at $SDK"
+          SDKMANAGER="$(find "$SDK/cmdline-tools" -maxdepth 3 -name sdkmanager -type f | head -n1)"
+          echo "sdkmanager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "sdk.dir=$SDK" > local.properties
 
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
