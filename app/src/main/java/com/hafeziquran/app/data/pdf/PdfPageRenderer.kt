@@ -88,7 +88,7 @@ class PdfPageRenderer @Inject constructor(
         withContext(Dispatchers.IO) {
             val file = ensureLocalCopy()
             val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-            val doc = pdfiumCore.openDocument(pfd)
+            val doc = pdfiumCore.newDocument(pfd)
 
             fileDescriptor = pfd
             document = doc
