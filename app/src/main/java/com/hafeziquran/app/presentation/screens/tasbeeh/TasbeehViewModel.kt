@@ -3,6 +3,7 @@ package com.hafeziquran.app.presentation.screens.tasbeeh
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hafeziquran.app.core.sound.ClickSoundPlayer
 import com.hafeziquran.app.core.util.Resource
 import com.hafeziquran.app.core.util.vibrateRoundComplete
 import com.hafeziquran.app.core.util.vibrateTick
@@ -33,6 +34,7 @@ data class TasbeehUiState(
     /** Every tap since the last reset, across all rounds. */
     val totalCount: Int = 0,
     val vibrationEnabled: Boolean = true,
+    val soundEnabled: Boolean = true,
 ) {
     val currentZikr: TasbeehItem? get() = zikrList.getOrNull(selectedIndex)
 }
@@ -42,6 +44,7 @@ class TasbeehViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: TasbeehRepository,
     private val preferences: UserPreferences,
+    private val clickSound: ClickSoundPlayer,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TasbeehUiState())
@@ -52,6 +55,11 @@ class TasbeehViewModel @Inject constructor(
         viewModelScope.launch {
             preferences.tasbeehVibration.collect { enabled ->
                 _uiState.update { it.copy(vibrationEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            preferences.tasbeehSound.collect { enabled ->
+                _uiState.update { it.copy(soundEnabled = enabled) }
             }
         }
     }
@@ -90,6 +98,7 @@ class TasbeehViewModel @Inject constructor(
             )
         }
 
+        if (before.soundEnabled) clickSound.play()
         if (before.vibrationEnabled) {
             if (roundComplete) context.vibrateRoundComplete() else context.vibrateTick()
         }
@@ -110,5 +119,9 @@ class TasbeehViewModel @Inject constructor(
 
     fun setVibration(enabled: Boolean) {
         viewModelScope.launch { preferences.setTasbeehVibration(enabled) }
+    }
+
+    fun setSound(enabled: Boolean) {
+        viewModelScope.launch { preferences.setTasbeehSound(enabled) }
     }
 }

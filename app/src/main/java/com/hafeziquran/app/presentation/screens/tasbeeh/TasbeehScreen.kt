@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Vibration
+import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -125,9 +126,20 @@ fun TasbeehScreen(viewModel: TasbeehViewModel = hiltViewModel()) {
 
                     Spacer(Modifier.height(20.dp))
 
-                    VibrationSetting(
+                    ToggleSetting(
+                        icon = Icons.Outlined.Vibration,
+                        label = "কম্পন",
                         enabled = state.vibrationEnabled,
                         onToggle = viewModel::setVibration,
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    ToggleSetting(
+                        icon = Icons.Outlined.VolumeUp,
+                        label = "ক্লিক সাউন্ড",
+                        enabled = state.soundEnabled,
+                        onToggle = viewModel::setSound,
                     )
 
                     Spacer(Modifier.height(24.dp))
@@ -359,7 +371,9 @@ private fun StatCard(
 }
 
 @Composable
-private fun VibrationSetting(
+private fun ToggleSetting(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
     enabled: Boolean,
     onToggle: (Boolean) -> Unit,
 ) {
@@ -377,13 +391,13 @@ private fun VibrationSetting(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                imageVector = Icons.Outlined.Vibration,
+                imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
             )
             Spacer(Modifier.width(12.dp))
             Text(
-                text = "কম্পন",
+                text = label,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),

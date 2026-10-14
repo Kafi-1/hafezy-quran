@@ -42,6 +42,7 @@ class UserPreferences @Inject constructor(
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val READER_NIGHT_MODE = booleanPreferencesKey("reader_night_mode")
         val TASBEEH_VIBRATION = booleanPreferencesKey("tasbeeh_vibration")
+        val TASBEEH_SOUND = booleanPreferencesKey("tasbeeh_sound")
     }
 
     val themeMode: Flow<ThemeMode> = context.settingsDataStore.data.map { prefs ->
@@ -80,6 +81,10 @@ class UserPreferences @Inject constructor(
         prefs[Keys.TASBEEH_VIBRATION] ?: true
     }
 
+    val tasbeehSound: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
+        prefs[Keys.TASBEEH_SOUND] ?: true
+    }
+
     suspend fun setThemeMode(mode: ThemeMode) = edit(Keys.THEME_MODE, mode.name)
 
     suspend fun setColorThemeName(name: String) = edit(Keys.COLOR_THEME, name)
@@ -91,6 +96,8 @@ class UserPreferences @Inject constructor(
     suspend fun setReaderNightMode(enabled: Boolean) = edit(Keys.READER_NIGHT_MODE, enabled)
 
     suspend fun setTasbeehVibration(enabled: Boolean) = edit(Keys.TASBEEH_VIBRATION, enabled)
+
+    suspend fun setTasbeehSound(enabled: Boolean) = edit(Keys.TASBEEH_SOUND, enabled)
 
     private suspend fun <T> edit(key: Preferences.Key<T>, value: T) {
         context.settingsDataStore.edit { it[key] = value }

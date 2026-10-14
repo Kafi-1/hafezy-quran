@@ -4,12 +4,13 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.ParcelFileDescriptor
+import android.util.Log
 import android.util.LruCache
 import com.hafeziquran.app.core.constants.AppConstants
-import com.shockwave.pdfium.PdfDocument
-import com.shockwave.pdfium.PdfiumCore
-import com.shockwave.pdfium.util.Size
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.legere.pdfiumandroid.PdfDocument
+import io.legere.pdfiumandroid.PdfiumCore
+import io.legere.pdfiumandroid.util.Size
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -80,6 +81,8 @@ class PdfPageRenderer @Inject constructor(
         /** Never rasterise wider than this. At ~1080 px the scan is already
          *  sharper than any phone panel, and every extra px costs ~4 bytes. */
         const val MAX_RENDER_WIDTH = 1080
+
+        const val TAG = "PdfPageRenderer"
     }
 
     /**
@@ -90,21 +93,30 @@ class PdfPageRenderer @Inject constructor(
         document?.let { return@withLock pageCount }
 
         withContext(Dispatchers.IO) {
-            val file = ensureLocalCopy()
-            val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-            val doc = pdfiumCore.newDocument(pfd)
+            try {
+                val file = ensureLocalCopy()
+                Log.d(TAG, "Opening PDF: ${file.absolutePath} (${file.length()} bytes)")
+                val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+                val doc = pdfiumCore.newDocument(pfd)
 
-            fileDescriptor = pfd
-            document = doc
-            pageCount = pdfiumCore.getPageCount(doc)
+                fileDescriptor = pfd
+                document = doc
+                pageCount = pdfiumCore.getPageCount(doc)
 
-            if (pageCount > 0) {
-                val size: Size = pdfiumCore.getPageSize(doc, 0)
-                if (size.width > 0) {
-                    pageAspectRatio = size.height.toFloat() / size.width.toFloat()
+                if (pageCount > 0) {
+                    val size: Size = pdfiumCore.getPageSize(doc, 0)
+                    if (size.width > 0) {
+                        pageAspectRatio = size.height.toFloat() / size.width.toFloat()
+                    }
                 }
+                Log.d(TAG, "PDF opened: $pageCount pages, aspect=$pageAspectRatio")
+                pageCount
+            } catch (t: Throwable) {
+                // Log the real cause for logcat, then let the reader surface a
+                // friendly Bangla message instead of crashing.
+                Log.e(TAG, "Failed to open PDF", t)
+                throw t
             }
-            pageCount
         }
     }
 
@@ -136,15 +148,22 @@ class PdfPageRenderer @Inject constructor(
                 }
                 val height = (width * ratio).roundToInt().coerceAtLeast(1)
 
-                val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                // Scanned pages have white paper; clearing avoids grey halos where
-                // Pdfium leaves the buffer untouched around the page edge.
-                bitmap.eraseColor(Color.WHITE)
-                pdfiumCore.renderPageBitmap(
-                    doc, bitmap, index, 0, 0, width, height, true,
-                )
-                pageCache.put(index, bitmap)
-                bitmap
+                try {
+                    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                    // Scanned pages have white paper; clearing avoids grey halos
+                    // where Pdfium leaves the buffer untouched around the edge.
+                    bitmap.eraseColor(Color.WHITE)
+                    pdfiumCore.renderPageBitmap(
+                        doc, bitmap, index, 0, 0, width, height,
+                        /* renderAnnot = */ true, /* textMask = */ false,
+                    )
+                    pageCache.put(index, bitmap)
+                    Log.v(TAG, "Rendered page $index at ${width}x$height")
+                    bitmap
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to render page $index", t)
+                    throw t
+                }
             }
         }
     }

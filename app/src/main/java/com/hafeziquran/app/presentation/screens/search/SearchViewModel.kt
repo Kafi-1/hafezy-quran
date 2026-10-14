@@ -82,7 +82,7 @@ class SearchViewModel @Inject constructor(
     }
 
     private companion object {
-        /** The index's own pagination; used only until Pdfium reports the truth. */
-        const val FALLBACK_TOTAL_PAGES = 604
+        /** Physical page count of the bundled scan; replaced by Pdfium once open. */
+        const val FALLBACK_TOTAL_PAGES = 612
     }
 }

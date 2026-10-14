@@ -21,6 +21,12 @@ android {
         vectorDrawables { useSupportLibrary = true }
         // Google's official *test* AdMob App ID. Replace with your real ID in step 9.
         manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
+
+        // Ship only the two ABIs real phones use. Pdfium's native libs for
+        // x86/x86_64 are ~5 MB each and only matter to emulators.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     buildTypes {
@@ -98,12 +104,12 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
 
     // --- PDF rendering ---
-    // pdfium-android still declares a legacy `com.android.support` dependency,
-    // which collides with AndroidX (duplicate android.support.v4.app.* classes).
-    // This app is AndroidX-only, so drop the old support artifacts entirely.
-    implementation(libs.pdfium) {
-        exclude(group = "com.android.support")
-    }
+    // AndroidX-native Pdfium binding. The old `com.github.barteksc:pdfium-android`
+    // referenced `android.support.v4.util.ArrayMap`, which is absent in an
+    // AndroidX-only app — that caused "Failed resolution of
+    // Landroid/support/v4/util/ArrayMap;" at runtime. This fork has no support-lib
+    // dependency at all, so no exclude/jetify workaround is needed.
+    implementation(libs.pdfium)
 
     // --- JSON (tasbeeh.json) ---
     implementation(libs.kotlinx.serialization.json)

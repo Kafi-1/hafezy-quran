@@ -1,12 +1,12 @@
 package com.hafeziquran.app.di
 
 import android.content.Context
-import com.shockwave.pdfium.PdfiumCore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import io.legere.pdfiumandroid.PdfiumCore
 import javax.inject.Singleton
 
 @Module

@@ -144,6 +144,7 @@ class ReaderViewModel @Inject constructor(
                     }
                 },
                 onFailure = { throwable ->
+                    android.util.Log.e("ReaderViewModel", "Quran open failed", throwable)
                     _uiState.update {
                         it.copy(
                             isLoading = false,

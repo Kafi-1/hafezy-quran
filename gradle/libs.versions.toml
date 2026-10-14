@@ -11,7 +11,7 @@ navigationCompose = "2.8.1"
 room = "2.6.1"
 datastore = "1.1.1"
 hiltNavigationCompose = "1.2.0"
-pdfium = "1.9.0"
+pdfium = "1.0.35"
 kotlinxSerialization = "1.7.3"
 splashscreen = "1.0.1"
 playServicesAds = "23.3.0"
@@ -43,7 +43,10 @@ hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref
 hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 
-pdfium = { group = "com.github.barteksc", name = "pdfium-android", version.ref = "pdfium" }
+# AndroidX-native Pdfium binding (fork of barteksc/pdfium-android that no longer
+# pulls in the removed `com.android.support` classes). Package is
+# `io.legere.pdfiumandroid`; API is source-compatible with the old one.
+pdfium = { group = "io.legere", name = "pdfiumandroid", version.ref = "pdfium" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 
 play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "playServicesAds" }

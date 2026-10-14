@@ -1,6 +1,6 @@
 {
-  "_comment": "Surah + Para page index for the Hafezi Mushaf. IMPORTANT: pages below use the standard 604-page Madani pagination. If your 612-page PDF is offset, set pageOffset to shift every start page at once (e.g. pageOffset = 8). To calibrate: open your PDF, find the printed page where সূরা ইয়াসীন begins, and set pageOffset = (yourPage - 440).",
-  "pageOffset": 0,
+  "_comment": "Surah + Para page index for the Hafezi Mushaf. Pages below use the standard 604-page Madani pagination. The bundled quran.pdf has 612 physical pages, so pageOffset shifts every start page by the number of front-matter pages. To calibrate on-device: open the PDF, find the printed page where সূরা ইয়াসীন begins, and set pageOffset = (thatPage - 440).",
+  "pageOffset": 8,
   "surahs": [
     { "number": 1, "arabic": "الفاتحة", "bangla": "আল-ফাতিহা", "meaning": "সূচনা", "ayahs": 7, "revelation": "মাক্কী", "page": 1 },
     { "number": 2, "arabic": "البقرة", "bangla": "আল-বাকারা", "meaning": "গাভী", "ayahs": 286, "revelation": "মাদানী", "page": 2 },
