@@ -67,15 +67,19 @@ class PdfPageRenderer @Inject constructor(
     }
 
     private companion object {
-        /** Roughly a third of a modest heap, clamped so low-RAM phones are safe. */
+        /**
+         * Roughly an eighth of the heap, clamped. Deliberately conservative: the
+         * pager keeps two neighbours alive on top of the cache, so a greedy cache
+         * here is what pushes low-RAM phones into an OutOfMemoryError.
+         */
         fun cacheBytes(): Int {
             val heap = Runtime.getRuntime().maxMemory()
-            return (heap / 6).coerceIn(24L * 1024 * 1024, 96L * 1024 * 1024).toInt()
+            return (heap / 8).coerceIn(16L * 1024 * 1024, 48L * 1024 * 1024).toInt()
         }
 
-        /** Never rasterise wider than this — beyond ~1440 px the scan has no more
-         *  detail but memory use keeps climbing. */
-        const val MAX_RENDER_WIDTH = 1440
+        /** Never rasterise wider than this. At ~1080 px the scan is already
+         *  sharper than any phone panel, and every extra px costs ~4 bytes. */
+        const val MAX_RENDER_WIDTH = 1080
     }
 
     /**
@@ -157,12 +161,24 @@ class PdfPageRenderer @Inject constructor(
     fun evictPage(index: Int) = pageCache.remove(index)
 
     /** Streams the PDF out of `assets/` once. Re-copies if the APK shipped a
-     *  different build (detected via size, which is cheap and good enough). */
+     *  different build (detected via size, which is cheap and good enough).
+     *
+     *  `openFd` only works for *uncompressed* assets. If aapt ever compresses the
+     *  PDF it throws `FileNotFoundException: This file can not be opened as a file
+     *  descriptor; it is probably compressed`, which used to abort the whole copy
+     *  and left the reader with nothing to open. Treat the size check as a pure
+     *  optimisation: when it cannot be read, just re-copy. */
     private fun ensureLocalCopy(): File {
         val target = File(context.filesDir, AppConstants.QURAN_PDF_ASSET)
-        val assetSize = context.assets.openFd(AppConstants.QURAN_PDF_ASSET).use { it.length }
+        val expectedSize = runCatching {
+            context.assets.openFd(AppConstants.QURAN_PDF_ASSET).use { it.length }
+        }.getOrNull()
 
-        if (target.exists() && target.length() == assetSize) return target
+        if (target.exists() && target.length() > 0L &&
+            (expectedSize == null || target.length() == expectedSize)
+        ) {
+            return target
+        }
 
         context.assets.open(AppConstants.QURAN_PDF_ASSET).use { input ->
             target.outputStream().use { output -> input.copyTo(output, DEFAULT_BUFFER_SIZE) }

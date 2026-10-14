@@ -55,6 +55,12 @@ sealed class Screen(val route: String) {
 
     data object Settings : Screen("settings")
 
+    /** In-app policy page (no external browser). */
+    data object Privacy : Screen("privacy")
+
+    /** In-app "about the app" page. */
+    data object About : Screen("about")
+
     companion object {
         /** Routes on which the bottom navigation bar is shown. */
         val bottomBarRoutes: Set<String> = setOf(

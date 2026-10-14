@@ -21,7 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.StarRate
@@ -52,6 +52,8 @@ import com.hafeziquran.app.presentation.theme.AppColorTheme
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onOpenPrivacy: () -> Unit,
+    onOpenAbout: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -92,12 +94,19 @@ fun SettingsScreen(
                 onSelect = viewModel::setColorTheme,
             )
 
-            SectionTitle("অ্যাপ")
+            SectionTitle("তথ্য")
             SettingLinkRow(
                 icon = Icons.Outlined.PrivacyTip,
                 title = "প্রাইভেসি পলিসি",
-                onClick = { AppLinks.openUrl(context, "${AppLinks.WEBSITE_URL}/privacy") },
+                onClick = onOpenPrivacy,
             )
+            SettingLinkRow(
+                icon = Icons.Outlined.Info,
+                title = "অ্যাপ সম্পর্কে",
+                onClick = onOpenAbout,
+            )
+
+            SectionTitle("অ্যাপ")
             SettingLinkRow(
                 icon = Icons.Outlined.Share,
                 title = "অ্যাপ শেয়ার করুন",
@@ -112,11 +121,6 @@ fun SettingsScreen(
                 icon = Icons.Outlined.Email,
                 title = "ডেভেলপারের সাথে যোগাযোগ",
                 onClick = { AppLinks.contactDeveloper(context) },
-            )
-            SettingLinkRow(
-                icon = Icons.Outlined.Language,
-                title = "অফিসিয়াল ওয়েবসাইট",
-                onClick = { AppLinks.openWebsite(context) },
             )
 
             Text(

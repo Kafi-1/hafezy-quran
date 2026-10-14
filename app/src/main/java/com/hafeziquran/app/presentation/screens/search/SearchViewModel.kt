@@ -42,12 +42,16 @@ class SearchViewModel @Inject constructor(
     val state: StateFlow<SearchUiState> =
         combine(indexRepository.index, query, pageCount) { resource, q, pages ->
             val surahs = (resource as? Resource.Success)?.data?.surahs.orEmpty()
+            // Pdfium's count wins once known; until then fall back to the index's
+            // own pagination so the "jump to page" prompt works on first frame —
+            // the reader re-clamps against the real document anyway.
+            val resolvedPages = pages.takeIf { it > 0 } ?: FALLBACK_TOTAL_PAGES
             SearchUiState(
                 isLoading = resource is Resource.Loading,
                 query = q,
                 surahResults = surahs.filterBy(q)
                     .map { SurahRow(it, indexRepository.resolvePage(it.page)) },
-                pageJump = q.trim().toIntOrNull()?.takeIf { pages > 0 && it in 1..pages },
+                pageJump = q.trim().toIntOrNull()?.takeIf { it in 1..resolvedPages },
                 errorMessage = (resource as? Resource.Error)?.message,
             )
         }.stateIn(
@@ -75,5 +79,10 @@ class SearchViewModel @Inject constructor(
                 surah.meaning.contains(trimmed, ignoreCase = true) ||
                 surah.number == trimmed.toIntOrNull()
         }
+    }
+
+    private companion object {
+        /** The index's own pagination; used only until Pdfium reports the truth. */
+        const val FALLBACK_TOTAL_PAGES = 604
     }
 }

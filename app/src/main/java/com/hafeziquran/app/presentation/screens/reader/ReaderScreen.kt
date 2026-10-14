@@ -23,7 +23,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LightMode
-import androidx.compose.material.icons.outlined.Numbers
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -159,7 +159,7 @@ fun ReaderScreen(
                         enabled = uiState.isReady,
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Numbers,
+                            imageVector = Icons.Outlined.Search,
                             contentDescription = "পৃষ্ঠায় যান",
                         )
                     }
@@ -268,6 +268,11 @@ private fun ReaderBody(
                 )
             }
         } else {
+            // A 0/NaN ratio (bad page metadata) would divide by zero in
+            // `aspectRatio`; fall back to the mushaf's usual ~1.45.
+            val pageRatio = uiState.pageAspectRatio
+                .takeIf { it.isFinite() && it > 0.01f } ?: 1.45f
+
             val listState = rememberLazyListState(
                 initialFirstVisibleItemIndex = (uiState.currentPage - 1).coerceAtLeast(0),
             )
@@ -298,7 +303,7 @@ private fun ReaderBody(
                         onZoomChange = { _, _ -> },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(1f / uiState.pageAspectRatio),
+                            .aspectRatio(1f / pageRatio),
                     )
                 }
             }

@@ -30,7 +30,7 @@ import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.FormatListNumbered
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.MenuBook
-import androidx.compose.material.icons.outlined.Numbers
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material3.Button
@@ -451,7 +451,7 @@ private fun FeatureGrid(
     val items = listOf(
         FeatureItem("সূরা সমূহ", "১১৪টি সূরা", Icons.Outlined.MenuBook, onSurahList),
         FeatureItem("পারা সমূহ", "৩০ পারা", Icons.Outlined.FormatListNumbered, onParaList),
-        FeatureItem("পৃষ্ঠা সার্চ", "যেকোনো পৃষ্ঠায় যান", Icons.Outlined.Numbers, onPageSearch),
+        FeatureItem("পৃষ্ঠা সার্চ", "যেকোনো পৃষ্ঠায় যান", Icons.Outlined.Search, onPageSearch),
         FeatureItem("সর্বশেষ", "শেষ পড়া পৃষ্ঠা", Icons.Outlined.History, onRecent),
         FeatureItem("বুকমার্ক", "সংরক্ষিত পৃষ্ঠা", Icons.Outlined.BookmarkBorder, onBookmarks),
         FeatureItem("তাসবীহ", "ডিজিটাল কাউন্টার", Icons.Outlined.Spa, onTasbeeh),
@@ -474,10 +474,10 @@ private fun FeatureCard(feature: FeatureItem, modifier: Modifier = Modifier) {
 
     Card(
         onClick = feature.onClick,
-        modifier = modifier.height(116.dp),
-        shape = RoundedCornerShape(18.dp),
+        modifier = modifier.height(120.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
     ) {
         Column(
             modifier = Modifier
@@ -487,15 +487,22 @@ private fun FeatureCard(feature: FeatureItem, modifier: Modifier = Modifier) {
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary,
+                            ),
+                        ),
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = feature.icon,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(22.dp),
                 )
             }

@@ -24,6 +24,8 @@ import com.hafeziquran.app.presentation.components.TabRoute
 import com.hafeziquran.app.presentation.screens.books.IslamicBooksScreen
 import com.hafeziquran.app.presentation.screens.bookmarks.BookmarksScreen
 import com.hafeziquran.app.presentation.screens.home.HomeScreen
+import com.hafeziquran.app.presentation.screens.info.InfoScreen
+import com.hafeziquran.app.presentation.screens.info.InfoSection
 import com.hafeziquran.app.presentation.screens.para.ParaListScreen
 import com.hafeziquran.app.presentation.screens.reader.ReaderScreen
 import com.hafeziquran.app.presentation.screens.search.SearchScreen
@@ -145,7 +147,19 @@ fun HafeziNavHost() {
             }
 
             composable(Screen.Settings.route) {
-                SettingsScreen(onBack = { navController.popBackStack() })
+                SettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenPrivacy = { navController.navigate(Screen.Privacy.route) },
+                    onOpenAbout = { navController.navigate(Screen.About.route) },
+                )
+            }
+
+            composable(Screen.Privacy.route) {
+                InfoScreen(section = InfoSection.PRIVACY, onBack = { navController.popBackStack() })
+            }
+
+            composable(Screen.About.route) {
+                InfoScreen(section = InfoSection.ABOUT, onBack = { navController.popBackStack() })
             }
         }
     }
