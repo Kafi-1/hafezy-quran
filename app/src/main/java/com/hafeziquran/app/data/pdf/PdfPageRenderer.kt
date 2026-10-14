@@ -5,10 +5,10 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.ParcelFileDescriptor
 import android.util.LruCache
-import android.util.Size
 import com.hafeziquran.app.core.constants.AppConstants
 import com.shockwave.pdfium.PdfDocument
 import com.shockwave.pdfium.PdfiumCore
+import com.shockwave.pdfium.util.Size
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -137,7 +137,7 @@ class PdfPageRenderer @Inject constructor(
                 // Pdfium leaves the buffer untouched around the page edge.
                 bitmap.eraseColor(Color.WHITE)
                 pdfiumCore.renderPageBitmap(
-                    doc, bitmap, index, 0, 0, width, height, 0, true,
+                    doc, bitmap, index, 0, 0, width, height, true,
                 )
                 pageCache.put(index, bitmap)
                 bitmap

@@ -10,7 +10,9 @@ import com.hafeziquran.app.data.local.entity.LastReadEntity
 @Database(
     entities = [BookmarkEntity::class, LastReadEntity::class],
     version = 1,
-    exportSchema = true,
+    // Schema export needs a configured schemaLocation (Room Gradle plugin); the
+    // schema is trivial and v1, so exporting it is not worth the extra plugin.
+    exportSchema = false,
 )
 abstract class QuranDatabase : RoomDatabase() {
     abstract fun bookmarkDao(): BookmarkDao
