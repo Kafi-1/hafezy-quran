@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand palette (also mirrored in Compose Color.kt) -->
+    <color name="brand_green">#0D7377</color>
+    <color name="brand_green_dark">#0A5C5F</color>
+    <color name="brand_gold">#D4AF37</color>
+    <color name="brand_cream">#FFFBF2</color>
+
+    <color name="ic_launcher_background">#0D7377</color>
+
+    <color name="night_background">#0B1214</color>
+</resources>

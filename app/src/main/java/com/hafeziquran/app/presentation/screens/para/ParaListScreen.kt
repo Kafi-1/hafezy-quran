@@ -1,0 +1,98 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
+package com.hafeziquran.app.presentation.screens.para
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.hafeziquran.app.core.util.toBanglaDigits
+import com.hafeziquran.app.presentation.components.ListSearchField
+import com.hafeziquran.app.presentation.components.NumberedListRow
+
+/**
+ * All 30 paras, using the exact same row layout as the surah list.
+ */
+@Composable
+fun ParaListScreen(
+    onBack: () -> Unit,
+    onOpenPage: (Int) -> Unit,
+    viewModel: ParaListViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("পারা সমূহ (${30.toBanglaDigits()})") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "ফিরে যান",
+                        )
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
+            when {
+                state.isLoading -> CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+
+                state.errorMessage != null -> Text(
+                    text = state.errorMessage.orEmpty(),
+                    modifier = Modifier.align(Alignment.Center),
+                    color = MaterialTheme.colorScheme.error,
+                )
+
+                else -> LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
+                    item {
+                        ListSearchField(
+                            value = state.query,
+                            onValueChange = viewModel::onQueryChange,
+                            placeholder = "পারা খুঁজুন…",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
+
+                    items(state.results, key = { it.para.number }) { row ->
+                        NumberedListRow(
+                            numberLabel = row.para.number.toBanglaDigits(),
+                            title = "${row.para.number.toBanglaDigits()} নং পারা",
+                            subtitle = row.para.bangla,
+                            arabic = row.para.arabic,
+                            pageLabel = "পৃষ্ঠা ${row.page.toBanglaDigits()}",
+                            onClick = { onOpenPage(row.page) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

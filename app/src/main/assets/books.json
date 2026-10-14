@@ -1,0 +1,33 @@
+{
+  "_comment": "Islamic books shown in the 'ইসলামিক বুক' tab. Drop the referenced PDFs into app/src/main/assets/ and they become readable automatically. Any book whose file is missing is shown greyed-out with a 'শীঘ্রই' badge instead of crashing.",
+  "books": [
+    {
+      "id": "quran",
+      "title": "হাফেজী কোরআন শরীফ",
+      "author": "আল্লাহর কালাম",
+      "asset": "quran.pdf",
+      "description": "সম্পূর্ণ ৬১২ পৃষ্ঠার হাফেজী মুসহাফ"
+    },
+    {
+      "id": "namaz_shikkha",
+      "title": "নামাজ শিক্ষা",
+      "author": "মাওলানা মুহাম্মদ ...",
+      "asset": "namaz_shikkha.pdf",
+      "description": "নামাজের নিয়ম, নিয়ত ও প্রয়োজনীয় দোয়া"
+    },
+    {
+      "id": "dua_sonkolon",
+      "title": "দোয়া সংকলন",
+      "author": "সংকলিত",
+      "asset": "dua_sonkolon.pdf",
+      "description": "দৈনন্দিন জীবনের প্রয়োজনীয় দোয়া"
+    },
+    {
+      "id": "hadith_40",
+      "title": "৪০ হাদীস",
+      "author": "ইমাম নববী (রহ.)",
+      "asset": "hadith_40.pdf",
+      "description": "বুখারী ও মুসলিম থেকে সংকলিত ৪০টি হাদীস"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Hafezy Quran</string>
+
+    <!-- Home -->
+    <string name="home_continue_reading">পড়া চালিয়ে যান</string>
+    <string name="home_surah_list">সূরা তালিকা</string>
+    <string name="home_para_list">পারা তালিকা</string>
+    <string name="home_bookmark">বুকমার্ক</string>
+    <string name="home_tasbeeh">তাসবীহ</string>
+    <string name="home_settings">সেটিংস</string>
+    <string name="home_last_read">সর্বশেষ পঠিত</string>
+    <string name="home_page">পৃষ্ঠা %1$d</string>
+    <string name="home_greeting">আসসালামু আলাইকুম</string>
+    <string name="home_subtitle">পবিত্র কুরআন পড়া শুরু করুন</string>
+
+    <!-- Reader -->
+    <string name="reader_page_of">%1$d / %2$d</string>
+    <string name="reader_go_to_page">পৃষ্ঠায় যান</string>
+    <string name="reader_bookmark_added">বুকমার্ক সংরক্ষিত হয়েছে</string>
+    <string name="reader_bookmark_removed">বুকমার্ক মুছে ফেলা হয়েছে</string>
+    <string name="reader_night_mode">নাইট মোড</string>
+    <string name="reader_loading">লোড হচ্ছে…</string>
+    <string name="reader_error">পৃষ্ঠা লোড করা যায়নি</string>
+    <string name="reader_retry">আবার চেষ্টা করুন</string>
+    <string name="reader_go">যান</string>
+    <string name="reader_cancel">বাতিল</string>
+    <string name="reader_page_hint">পৃষ্ঠা নম্বর (১ - %1$d)</string>
+
+    <!-- Common -->
+    <string name="cd_back">ফিরে যান</string>
+    <string name="cd_bookmark">বুকমার্ক</string>
+</resources>
