@@ -10,5 +10,10 @@
 local.properties
 *.hprof
 
+# Release signing credentials — never commit
+keystore.properties
+*.jks
+*.keystore
+
 # Claude Code local workspace
 .claude

@@ -3,6 +3,7 @@ package com.hafeziquran.app.presentation.screens.surah
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hafeziquran.app.core.util.Resource
+import com.hafeziquran.app.core.util.toIntOrNullBangla
 import com.hafeziquran.app.data.model.Surah
 import com.hafeziquran.app.data.repository.QuranIndexRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -56,16 +57,18 @@ class SurahListViewModel @Inject constructor(
 
     /**
      * Matches on the Bangla name, the meaning, or an exact surah number — the
-     * three things a user actually types. Arabic is excluded: the bundled font
+     * three things a user actually types. The number accepts Bengali digits too,
+     * so `২` and `2` both find সূরা আল-বাকারা. Arabic is excluded: the bundled font
      * has no Arabic coverage, and nobody searches a Bangla UI by Arabic script.
      */
     private fun List<Surah>.filterBy(query: String): List<Surah> {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return this
+        val number = trimmed.toIntOrNullBangla()
         return filter { surah ->
             surah.bangla.contains(trimmed, ignoreCase = true) ||
                 surah.meaning.contains(trimmed, ignoreCase = true) ||
-                surah.number == trimmed.toIntOrNull()
+                (number != null && surah.number == number)
         }
     }
 }

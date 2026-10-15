@@ -63,8 +63,10 @@ class QuranIndexRepository @Inject constructor(
     }
 
     /**
-     * Converts an index page into a page number for the bundled PDF.
-     * Does **not** clamp — the reader clamps against the real page count.
+     * Converts a Madani index page into a 1-based page number for the bundled PDF.
+     * Clamped to the document's real page range so a bad index entry can never ask
+     * the reader for a page that does not exist.
      */
-    fun resolvePage(rawPage: Int): Int = rawPage + pageOffset
+    fun resolvePage(rawPage: Int): Int =
+        (rawPage + pageOffset).coerceIn(1, AppConstants.PHYSICAL_PAGE_COUNT)
 }

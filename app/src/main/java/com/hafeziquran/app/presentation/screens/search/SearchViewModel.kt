@@ -2,7 +2,9 @@ package com.hafeziquran.app.presentation.screens.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hafeziquran.app.core.constants.AppConstants
 import com.hafeziquran.app.core.util.Resource
+import com.hafeziquran.app.core.util.toIntOrNullBangla
 import com.hafeziquran.app.data.model.Surah
 import com.hafeziquran.app.data.pdf.PdfPageRenderer
 import com.hafeziquran.app.data.repository.QuranIndexRepository
@@ -45,13 +47,13 @@ class SearchViewModel @Inject constructor(
             // Pdfium's count wins once known; until then fall back to the index's
             // own pagination so the "jump to page" prompt works on first frame —
             // the reader re-clamps against the real document anyway.
-            val resolvedPages = pages.takeIf { it > 0 } ?: FALLBACK_TOTAL_PAGES
+            val resolvedPages = pages.takeIf { it > 0 } ?: AppConstants.PHYSICAL_PAGE_COUNT
             SearchUiState(
                 isLoading = resource is Resource.Loading,
                 query = q,
                 surahResults = surahs.filterBy(q)
                     .map { SurahRow(it, indexRepository.resolvePage(it.page)) },
-                pageJump = q.trim().toIntOrNull()?.takeIf { it in 1..resolvedPages },
+                pageJump = q.trim().toIntOrNullBangla()?.takeIf { it in 1..resolvedPages },
                 errorMessage = (resource as? Resource.Error)?.message,
             )
         }.stateIn(
@@ -74,15 +76,11 @@ class SearchViewModel @Inject constructor(
     private fun List<Surah>.filterBy(query: String): List<Surah> {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return this
+        val number = trimmed.toIntOrNullBangla()
         return filter { surah ->
             surah.bangla.contains(trimmed, ignoreCase = true) ||
                 surah.meaning.contains(trimmed, ignoreCase = true) ||
-                surah.number == trimmed.toIntOrNull()
+                (number != null && surah.number == number)
         }
-    }
-
-    private companion object {
-        /** Physical page count of the bundled scan; replaced by Pdfium once open. */
-        const val FALLBACK_TOTAL_PAGES = 612
     }
 }

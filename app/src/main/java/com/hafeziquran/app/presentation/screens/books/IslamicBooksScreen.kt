@@ -39,11 +39,12 @@ import com.hafeziquran.app.presentation.components.TabScaffold
 
 /**
  * The "ইসলামিক বুক" tab. Books whose PDF is not bundled are shown greyed-out with
- * a "শীঘ্রই" badge, so the catalogue can ship ahead of its content.
+ * a "শীঘ্রই" badge and cannot be tapped. The reader only knows `quran.pdf` today,
+ * so the callback receives the tapped book and navigation decides what can open.
  */
 @Composable
 fun IslamicBooksScreen(
-    onOpenBooks: () -> Unit,
+    onOpenBook: (IslamicBook) -> Unit,
     viewModel: BooksViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -76,7 +77,9 @@ fun IslamicBooksScreen(
                     items(state.books, key = { it.id }) { book ->
                         BookCard(
                             book = book,
-                            onClick = { if (book.isAvailable) onOpenBooks() },
+                            // The Card is disabled when the book is unavailable, so
+                            // this only fires for a bundled PDF.
+                            onClick = { onOpenBook(book) },
                         )
                         Spacer(Modifier.height(12.dp))
                     }

@@ -3,6 +3,7 @@ package com.hafeziquran.app.presentation.screens.home
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hafeziquran.app.core.constants.AppConstants
 import com.hafeziquran.app.core.util.Resource
 import com.hafeziquran.app.data.model.Para
 import com.hafeziquran.app.data.model.Surah
@@ -123,7 +124,7 @@ class HomeViewModel @Inject constructor(
 
     private fun progressOf(page: Int?): Float {
         val total = _state.value.totalPages.takeIf { it > 0 }
-            ?: FALLBACK_TOTAL_PAGES
+            ?: AppConstants.PHYSICAL_PAGE_COUNT
         return ((page ?: 0).toFloat() / total.toFloat()).coerceIn(0f, 1f)
     }
 
@@ -151,9 +152,6 @@ class HomeViewModel @Inject constructor(
         }
 
     private companion object {
-        /** Used for the progress bar only until Pdfium reports the real count. */
-        const val FALLBACK_TOTAL_PAGES = 604
-
         /**
          * The shortcut strip. `pageOverride` exists for আয়াতুল কুরসি, which is a
          * single ayah inside আল-বাকারা rather than a surah of its own.

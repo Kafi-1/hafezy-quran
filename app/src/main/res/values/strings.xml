@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Hafezy Quran</string>
+    <string name="app_name">হাফেজী কোরআন শরীফ</string>
 
     <!-- Home -->
     <string name="home_continue_reading">পড়া চালিয়ে যান</string>

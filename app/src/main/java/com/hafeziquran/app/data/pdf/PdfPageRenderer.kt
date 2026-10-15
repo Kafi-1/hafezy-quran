@@ -134,21 +134,30 @@ class PdfPageRenderer @Inject constructor(
 
         open()
 
+        // Reject out-of-range indices *before* any native call. Pdfium aborts the
+        // whole process on an invalid page index, so a stray jump from the UI must
+        // be stopped here where it becomes a catchable Kotlin exception instead.
+        if (index < 0 || pageCount <= 0 || index >= pageCount) {
+            throw IllegalArgumentException(
+                "Page index $index out of range (0..${pageCount - 1})",
+            )
+        }
+
         return renderMutex.withLock {
             // Another coroutine may have produced it while we waited.
             pageCache.get(index)?.let { if (it.width >= width) return@withLock it }
 
             withContext(Dispatchers.IO) {
-                val doc = document ?: error("PDF not open")
-                val size: Size = pdfiumCore.getPageSize(doc, index)
-                val ratio = if (size.width > 0) {
-                    size.height.toFloat() / size.width.toFloat()
-                } else {
-                    pageAspectRatio
-                }
-                val height = (width * ratio).roundToInt().coerceAtLeast(1)
-
                 try {
+                    val doc = document ?: error("PDF not open")
+                    val size: Size = pdfiumCore.getPageSize(doc, index)
+                    val ratio = if (size.width > 0) {
+                        size.height.toFloat() / size.width.toFloat()
+                    } else {
+                        pageAspectRatio
+                    }
+                    val height = (width * ratio).roundToInt().coerceAtLeast(1)
+
                     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
                     // Scanned pages have white paper; clearing avoids grey halos
                     // where Pdfium leaves the buffer untouched around the edge.
@@ -161,6 +170,8 @@ class PdfPageRenderer @Inject constructor(
                     Log.v(TAG, "Rendered page $index at ${width}x$height")
                     bitmap
                 } catch (t: Throwable) {
+                    // Every native call is inside this try: a corrupt page or a bad
+                    // index becomes a normal Kotlin exception the UI can surface.
                     Log.e(TAG, "Failed to render page $index", t)
                     throw t
                 }
@@ -168,16 +179,11 @@ class PdfPageRenderer @Inject constructor(
         }
     }
 
-    /** Non-blocking lookup used to show an already-decoded page instantly. */
-    fun cachedPage(index: Int): Bitmap? = pageCache.get(index)
-
     /** Pre-decodes neighbours so a page turn feels instant. */
     suspend fun prefetch(index: Int, targetWidth: Int) {
         if (index < 0 || (pageCount > 0 && index >= pageCount)) return
         runCatching { renderPage(index, targetWidth) }
     }
-
-    fun evictPage(index: Int) = pageCache.remove(index)
 
     /** Streams the PDF out of `assets/` once. Re-copies if the APK shipped a
      *  different build (detected via size, which is cheap and good enough).
@@ -205,7 +211,12 @@ class PdfPageRenderer @Inject constructor(
         return target
     }
 
-    /** Releases native resources. Called when the process is about to die. */
+    /**
+     * Releases native resources. Called from [com.hafeziquran.app.HafeziQuranApp.onTerminate],
+     * which the platform only invokes on emulators — on a real device the OS reclaims
+     * the native memory when it kills the process, so an explicit close is not needed
+     * there. Kept so the emulator path leaks nothing.
+     */
     fun close() {
         runCatching {
             document?.let { pdfiumCore.closeDocument(it) }

@@ -1,6 +1,14 @@
-# PdfiumAndroid ships native .so files; keep the JNI bridge intact.
--keep class com.shockwave.** { *; }
--keepclassmembers class com.shockwave.** { *; }
+# PdfiumAndroid ships native .so files; the JNI bridge resolves Kotlin/Java classes
+# by name, so R8 must never rename or strip them. The package is io.legere
+# (AndroidX-native fork); keeping the old `com.shockwave` package did nothing and
+# let R8 break the JNI bridge in release builds.
+-keep class io.legere.pdfiumandroid.** { *; }
+-keepclassmembers class io.legere.pdfiumandroid.** { *; }
+-dontwarn io.legere.pdfiumandroid.**
+
+# Belt-and-braces: if any transitive artifact still references the removed
+# Support Library class, don't fail the build over it (Jetifier should rewrite it).
+-dontwarn android.support.v4.**
 
 # Room / Hilt / Compose are handled by their own consumer rules, but keep
 # entities & serializable models safe from aggressive R8 renaming.
@@ -15,4 +23,4 @@
 -dontwarn com.google.android.gms.ads.**
 
 # Pdfium uses reflection for optional features.
--dontwarn com.shockwave.**
+-dontwarn io.legere.pdfiumandroid.**

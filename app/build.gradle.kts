@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,33 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+}
+
+// ---------------------------------------------------------------------------
+// AdMob IDs
+// ---------------------------------------------------------------------------
+// Google's official *test* IDs — used unconditionally by debug builds so dev taps
+// are harmless, and as the fallback for release so a fresh checkout still builds.
+val testAdmobAppId = "ca-app-pub-3940256099942544~3347511713"
+val testBannerUnitId = "ca-app-pub-3940256099942544/9214589741"
+
+// Real IDs for the shipping build are read from gradle.properties
+// (`admobAppId` / `admobBannerUnitId`) so no production ID is ever hard-coded here.
+val prodAdmobAppId = (findProperty("admobAppId") as String?)
+    ?.takeIf { it.isNotBlank() } ?: testAdmobAppId
+val prodBannerUnitId = (findProperty("admobBannerUnitId") as String?)
+    ?.takeIf { it.isNotBlank() } ?: testBannerUnitId
+
+// ---------------------------------------------------------------------------
+// Release signing
+// ---------------------------------------------------------------------------
+// Credentials live in a git-ignored keystore.properties (see .gitignore). When it
+// is absent the release build falls back to the debug key so `assembleRelease`
+// still produces an installable APK for local testing.
+val keystorePropsFile = rootProject.file("keystore.properties")
+val hasReleaseKeystore = keystorePropsFile.exists()
+val keystoreProps = Properties().apply {
+    if (hasReleaseKeystore) keystorePropsFile.inputStream().use { load(it) }
 }
 
 android {
@@ -19,8 +48,8 @@ android {
         versionName = "1.0.0"
 
         vectorDrawables { useSupportLibrary = true }
-        // Google's official *test* AdMob App ID. Replace with your real ID in step 9.
-        manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
+        // Overridden per build type below: test ID in debug, real ID in release.
+        manifestPlaceholders["admobAppId"] = prodAdmobAppId
 
         // Ship only the two ABIs real phones use. Pdfium's native libs for
         // x86/x86_64 are ~5 MB each and only matter to emulators.
@@ -29,9 +58,25 @@ android {
         }
     }
 
+    signingConfigs {
+        // Only created when a keystore.properties is present; a missing file must
+        // not fail configuration.
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
+            // Debug always ships Google's test Ads so development taps are safe.
+            manifestPlaceholders["admobAppId"] = testAdmobAppId
+            buildConfigField("String", "ADMOB_BANNER_UNIT_ID", "\"$testBannerUnitId\"")
         }
         release {
             isMinifyEnabled = true
@@ -40,6 +85,16 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Real IDs from gradle.properties; falls back to the test IDs if unset.
+            manifestPlaceholders["admobAppId"] = prodAdmobAppId
+            buildConfigField("String", "ADMOB_BANNER_UNIT_ID", "\"$prodBannerUnitId\"")
+            // Signed with the release key when available, else the debug key so the
+            // APK is still installable for local smoke-testing.
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 

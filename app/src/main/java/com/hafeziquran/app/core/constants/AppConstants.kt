@@ -14,4 +14,12 @@ object AppConstants {
 
     /** Path (inside `assets/`) of the Islamic-books catalogue. */
     const val BOOKS_JSON_ASSET = "books.json"
+
+    /**
+     * Physical page count of the bundled `quran.pdf`. The single source of truth
+     * for clamping: `quran_index.json` stores standard 604-page Madani numbers and
+     * [com.hafeziquran.app.data.repository.QuranIndexRepository.resolvePage] shifts
+     * them by `pageOffset` (currently 8) so they land on this 612-page scan.
+     */
+    const val PHYSICAL_PAGE_COUNT = 612
 }

@@ -145,10 +145,12 @@ class ReaderViewModel @Inject constructor(
                 },
                 onFailure = { throwable ->
                     android.util.Log.e("ReaderViewModel", "Quran open failed", throwable)
+                    // Never surface a raw exception string to the reader; the exact
+                    // cause is already in logcat via the Log.e above.
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = throwable.message ?: "কুরআন ফাইল খোলা যায়নি",
+                            errorMessage = "কুরআন ফাইল খোলা যায়নি",
                         )
                     }
                 },
@@ -166,11 +168,13 @@ class ReaderViewModel @Inject constructor(
                 )
         }
 
-    /** Warms the pages either side of [page] so the next turn is instant. */
+    /** Warms the pages either side of [page] (1-based) so the next turn is instant. */
     fun prefetchNeighbours(page: Int, widthPx: Int) {
+        // The UI works in 1-based pages; Pdfium indices are 0-based.
+        val index = page - 1
         viewModelScope.launch {
-            pdfRenderer.prefetch(page - 2, widthPx) // -2/+0 are the two ahead in RTL
-            pdfRenderer.prefetch(page, widthPx)
+            pdfRenderer.prefetch(index - 1, widthPx) // the page before
+            pdfRenderer.prefetch(index + 1, widthPx) // the page after
         }
     }
 

@@ -19,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.hafeziquran.app.core.constants.AppConstants
 import com.hafeziquran.app.presentation.components.BottomNavBar
 import com.hafeziquran.app.presentation.components.TabRoute
 import com.hafeziquran.app.presentation.screens.books.IslamicBooksScreen
@@ -102,7 +103,14 @@ fun HafeziNavHost() {
 
             composable(Screen.IslamicBooks.route) {
                 IslamicBooksScreen(
-                    onOpenBooks = { navController.navigate(Screen.Reader.createRoute(1)) },
+                    onOpenBook = { book ->
+                        // Only the bundled mushaf is readable today. Every other
+                        // catalogue entry has no PDF in assets yet and is shown
+                        // disabled in the list, so it can never reach this point.
+                        if (book.asset == AppConstants.QURAN_PDF_ASSET) {
+                            navController.navigate(Screen.Reader.createRoute())
+                        }
+                    },
                 )
             }
 
