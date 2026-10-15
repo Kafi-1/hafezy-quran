@@ -66,6 +66,7 @@ import com.hafeziquran.app.R
 import com.hafeziquran.app.core.util.AppLinks
 import com.hafeziquran.app.core.util.Resource
 import com.hafeziquran.app.presentation.components.AdBanner
+import com.hafeziquran.app.presentation.components.ShimmerBox
 import com.hafeziquran.app.presentation.theme.Gold
 import com.hafeziquran.app.presentation.theme.LocalSpacing
 
@@ -374,17 +375,20 @@ private fun PreviewThumbnail(
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
-        if (preview is Resource.Success) {
-            Image(
+        when (preview) {
+            is Resource.Success -> Image(
                 bitmap = preview.data.asImageBitmap(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
-        } else {
-            // Loading and failure share one quiet placeholder; the whole card
-            // stays tappable so a decode failure never traps the user.
-            Icon(
+
+            // Still decoding: a shimmer reads as "loading" instead of a dead box.
+            null -> ShimmerBox(modifier = Modifier.fillMaxSize())
+
+            // A decode failure keeps a quiet placeholder; the card stays tappable
+            // so the user is never trapped by a bad page.
+            else -> Icon(
                 imageVector = Icons.Outlined.MenuBook,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -396,13 +400,24 @@ private fun PreviewThumbnail(
 
 @Composable
 private fun SectionTitle(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground,
+    Row(
         modifier = modifier,
-    )
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 4.dp, height = 18.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(Gold),
+        )
+        Spacer(Modifier.width(LocalSpacing.current.sm))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+    }
 }
 
 @Composable

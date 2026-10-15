@@ -32,10 +32,14 @@ import com.hafeziquran.app.presentation.screens.para.ParaListScreen
 import com.hafeziquran.app.presentation.screens.reader.ReaderScreen
 import com.hafeziquran.app.presentation.screens.search.SearchScreen
 import com.hafeziquran.app.presentation.screens.settings.SettingsScreen
+import com.hafeziquran.app.presentation.screens.splash.SplashScreen
 import com.hafeziquran.app.presentation.screens.surah.SurahListScreen
 import com.hafeziquran.app.presentation.screens.tasbeeh.TasbeehScreen
 
 private const val TRANSITION_MS = 280
+
+/** Slower than the standard transition so the splash dissolves gently into Home. */
+private const val SPLASH_FADE_MS = 480
 
 private const val TAG = "HafeziNavHost"
 
@@ -73,7 +77,7 @@ fun HafeziNavHost() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Home.route,
+            startDestination = Screen.Splash.route,
             modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
             enterTransition = {
                 slideInHorizontally(tween(TRANSITION_MS)) { it / 6 } + fadeIn(tween(TRANSITION_MS))
@@ -84,6 +88,24 @@ fun HafeziNavHost() {
                 slideOutHorizontally(tween(TRANSITION_MS)) { it / 6 } + fadeOut(tween(TRANSITION_MS))
             },
         ) {
+            // ---------- Launch ----------
+            composable(
+                route = Screen.Splash.route,
+                // The splash must not slide away like a pushed screen; it
+                // dissolves into Home.
+                exitTransition = { fadeOut(tween(SPLASH_FADE_MS)) },
+                popExitTransition = { fadeOut(tween(SPLASH_FADE_MS)) },
+            ) {
+                SplashScreen(
+                    onFinished = {
+                        navController.navigate(Screen.Home.route) {
+                            // Drop the splash so Back from Home exits the app.
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
+                    },
+                )
+            }
+
             // ---------- Tabs ----------
             composable(Screen.Home.route) {
                 HomeScreen(

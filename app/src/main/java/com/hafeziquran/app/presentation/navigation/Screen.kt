@@ -16,6 +16,11 @@ private const val READER_NO_PAGE = -1
  */
 sealed class Screen(val route: String) {
 
+    // --- Launch ---
+
+    /** Animated launch screen; the graph's start destination. Never shown twice. */
+    data object Splash : Screen("splash")
+
     // --- Bottom-bar tabs (the bar stays visible on exactly these) ---
 
     data object Home : Screen("home")

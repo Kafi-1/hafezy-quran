@@ -2,6 +2,9 @@
 <resources>
     <string name="app_name">হাফেজী কোরআন শরীফ</string>
 
+    <!-- Splash -->
+    <string name="splash_tagline">পবিত্র কুরআন — বাংলা অনুবাদসহ</string>
+
     <!-- Home -->
     <string name="home_continue_reading">পড়া চালিয়ে যান</string>
     <string name="home_surah_list">সূরা তালিকা</string>
