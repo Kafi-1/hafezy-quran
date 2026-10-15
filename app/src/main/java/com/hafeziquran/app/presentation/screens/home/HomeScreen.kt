@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.FormatListNumbered
+import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Search
@@ -85,6 +86,7 @@ fun HomeScreen(
     onBookmarks: () -> Unit,
     onTasbeeh: () -> Unit,
     onBanglaQuran: () -> Unit,
+    onAudioQuran: () -> Unit,
     onSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -142,6 +144,7 @@ fun HomeScreen(
                     onBookmarks = onBookmarks,
                     onTasbeeh = onTasbeeh,
                     onBanglaQuran = onBanglaQuran,
+                    onAudioQuran = onAudioQuran,
                     modifier = Modifier.padding(horizontal = spacing.md),
                 )
             }
@@ -465,6 +468,7 @@ private fun FeatureGrid(
     onBookmarks: () -> Unit,
     onTasbeeh: () -> Unit,
     onBanglaQuran: () -> Unit,
+    onAudioQuran: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val items = listOf(
@@ -472,6 +476,7 @@ private fun FeatureGrid(
         FeatureItem("পারা সমূহ", "৩০ পারা", Icons.Outlined.FormatListNumbered, onParaList),
         FeatureItem("পৃষ্ঠা সার্চ", "যেকোনো পৃষ্ঠায় যান", Icons.Outlined.Search, onPageSearch),
         FeatureItem("বাংলা কোরআন", "বাংলা অনুবাদ", Icons.Outlined.Translate, onBanglaQuran),
+        FeatureItem("অডিও কোরআন", "তিলাওয়াত শুনুন", Icons.Outlined.Headphones, onAudioQuran),
         FeatureItem("সর্বশেষ", "শেষ পড়া পৃষ্ঠা", Icons.Outlined.History, onRecent),
         FeatureItem("বুকমার্ক", "সংরক্ষিত পৃষ্ঠা", Icons.Outlined.BookmarkBorder, onBookmarks),
         FeatureItem("তাসবীহ", "ডিজিটাল কাউন্টার", Icons.Outlined.Spa, onTasbeeh),

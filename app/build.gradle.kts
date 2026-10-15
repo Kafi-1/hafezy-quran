@@ -171,4 +171,8 @@ dependencies {
 
     // --- Ads (banner on Home only; never shown on the Quran reader) ---
     implementation(libs.play.services.ads)
+
+    // --- Audio (ExoPlayer + MediaSession: streaming, offline, background play) ---
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.session)
 }

@@ -23,6 +23,7 @@ import androidx.navigation.navArgument
 import com.hafeziquran.app.core.constants.AppConstants
 import com.hafeziquran.app.presentation.components.BottomNavBar
 import com.hafeziquran.app.presentation.components.TabRoute
+import com.hafeziquran.app.presentation.screens.audioquran.AudioQuranScreen
 import com.hafeziquran.app.presentation.screens.books.IslamicBooksScreen
 import com.hafeziquran.app.presentation.screens.banglaquran.BanglaQuranScreen
 import com.hafeziquran.app.presentation.screens.banglaquran.BanglaQuranViewerScreen
@@ -119,6 +120,7 @@ fun HafeziNavHost() {
                     onBookmarks = { navController.switchTab(TabRoute.Bookmarks) },
                     onTasbeeh = { navController.switchTab(TabRoute.Tasbeeh) },
                     onBanglaQuran = { navController.navigate(Screen.BanglaQuran.route) },
+                    onAudioQuran = { navController.navigate(Screen.AudioQuran.route) },
                     onSettings = { navController.navigate(Screen.Settings.route) },
                 )
             }
@@ -184,6 +186,10 @@ fun HafeziNavHost() {
 
             composable(Screen.BanglaQuranViewer.route) {
                 BanglaQuranViewerScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(Screen.AudioQuran.route) {
+                AudioQuranScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Screen.Search.route) {

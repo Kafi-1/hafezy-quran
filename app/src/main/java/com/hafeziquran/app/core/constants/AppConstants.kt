@@ -12,6 +12,9 @@ object AppConstants {
     /** Path (inside `assets/`) of the surah/para page index. */
     const val QURAN_INDEX_ASSET = "quran_index.json"
 
+    /** Path (inside `assets/`) of the 114-surah audio catalogue. */
+    const val SURAHS_JSON_ASSET = "surahs.json"
+
     /** Path (inside `assets/`) of the Islamic-books catalogue. */
     const val BOOKS_JSON_ASSET = "books.json"
 

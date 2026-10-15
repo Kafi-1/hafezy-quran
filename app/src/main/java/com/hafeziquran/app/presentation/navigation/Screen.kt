@@ -61,6 +61,9 @@ sealed class Screen(val route: String) {
     /** Full-screen viewer for the downloaded Bangla translation. */
     data object BanglaQuranViewer : Screen("bangla_quran_viewer")
 
+    /** Streaming / offline recitation with background playback. */
+    data object AudioQuran : Screen("audio_quran")
+
     data object ParaList : Screen("para_list")
 
     /** Opened by the centre button in the bottom bar. */

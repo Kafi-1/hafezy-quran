@@ -9,6 +9,12 @@
     <!-- Digital Tasbeeh haptics -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Audio Quran: keep reciting with the screen off, with transport controls -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:name=".HafeziQuranApp"
         android:allowBackup="true"
@@ -37,6 +43,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Audio Quran playback. media3 owns the notification and lock-screen
+             controls; the UI talks to it only via a MediaController. -->
+        <service
+            android:name=".playback.AudioPlayerService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
 
     </application>
 
