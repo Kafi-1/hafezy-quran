@@ -33,17 +33,19 @@ sealed class Screen(val route: String) {
      * The mushaf reader. Omit the page argument to resume the last read page, or
      * pass a 1-based number to jump straight there (from a bookmark, a surah, a
      * para, or "go to page").
+     *
+     * The pattern MUST contain the `{page}` placeholder. Registering the default
+     * value into the pattern instead (`reader?page=-1`) creates a single *literal*
+     * destination, so every `navigate("reader?page=N")` with N != -1 matches
+     * nothing and throws `IllegalArgumentException: ... cannot be found in the
+     * navigation graph` — which crashed the app on every surah/para/bookmark tap.
      */
-    data object Reader : Screen("reader?$READER_ARG_PAGE=$READER_NO_PAGE") {
+    data object Reader : Screen("reader?$READER_ARG_PAGE={$READER_ARG_PAGE}") {
         const val ARG_PAGE = READER_ARG_PAGE
         const val NO_PAGE = READER_NO_PAGE
 
         fun createRoute(page: Int? = null): String =
-            if (page == null) {
-                "reader?$ARG_PAGE=$NO_PAGE"
-            } else {
-                "reader?$ARG_PAGE=$page"
-            }
+            "reader?$ARG_PAGE=${page ?: NO_PAGE}"
     }
 
     data object SurahList : Screen("surah_list")

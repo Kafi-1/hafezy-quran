@@ -1,10 +1,12 @@
 package com.hafeziquran.app.presentation.screens.reader
 
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hafeziquran.app.core.util.Resource
+import com.hafeziquran.app.core.util.toBanglaDigits
 import com.hafeziquran.app.data.pdf.PdfPageRenderer
 import com.hafeziquran.app.data.preferences.ReadingMode
 import com.hafeziquran.app.data.preferences.UserPreferences
@@ -12,6 +14,7 @@ import com.hafeziquran.app.data.repository.BookmarkRepository
 import com.hafeziquran.app.data.repository.ReadingPositionRepository
 import com.hafeziquran.app.presentation.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -127,11 +130,22 @@ class ReaderViewModel @Inject constructor(
                     }
 
                     // Priority: explicit request → last read → first page.
+                    val requested = requestedPage
                     val startPage = (
-                        requestedPage
+                        requested
                             ?: readingPositionRepository.observeLastPage().first()
                             ?: FIRST_PAGE
                         ).coerceIn(FIRST_PAGE, count)
+
+                    if (requested != null && requested != startPage) {
+                        // A stale bookmark or a bad index entry asked for a page
+                        // the document does not have. Tell the user where we
+                        // landed rather than silently opening something else.
+                        _messages.trySend(
+                            "পৃষ্ঠা ${requested.toBanglaDigits()} সীমার বাইরে — " +
+                                "পৃষ্ঠা ${startPage.toBanglaDigits()} খোলা হলো",
+                        )
+                    }
 
                     currentPage.value = startPage
                     _uiState.update {
@@ -158,14 +172,21 @@ class ReaderViewModel @Inject constructor(
         }
     }
 
-    /** Renders one page at [widthPx] for display, off the main thread. */
+    /** Renders one page at [widthPx] for display, off the main thread.
+     *
+     *  Never throws: a bad index, a corrupt page or a dead Pdfium handle becomes a
+     *  [Resource.Error] the reader shows in Bangla. Cancellation is rethrown so a
+     *  disposed page stops its work instead of being reported as a failure. */
     suspend fun renderPage(pageIndex: Int, widthPx: Int): Resource<Bitmap> =
-        withContext(Dispatchers.IO) {
-            runCatching { pdfRenderer.renderPage(pageIndex, widthPx) }
-                .fold(
-                    onSuccess = { Resource.Success(it) },
-                    onFailure = { Resource.Error(it, "পৃষ্ঠা লোড করা যায়নি") },
-                )
+        try {
+            Resource.Success(
+                withContext(Dispatchers.IO) { pdfRenderer.renderPage(pageIndex, widthPx) },
+            )
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (throwable: Throwable) {
+            Log.e(TAG, "renderPage(index=$pageIndex) failed", throwable)
+            Resource.Error(throwable, "পৃষ্ঠা লোড করা যায়নি")
         }
 
     /** Warms the pages either side of [page] (1-based) so the next turn is instant. */
@@ -222,5 +243,6 @@ class ReaderViewModel @Inject constructor(
 
     private companion object {
         const val FIRST_PAGE = 1
+        const val TAG = "ReaderViewModel"
     }
 }

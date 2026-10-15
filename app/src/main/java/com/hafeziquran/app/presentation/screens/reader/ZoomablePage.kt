@@ -5,9 +5,11 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateRotation
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -107,25 +109,56 @@ fun ZoomablePage(
                     },
                 )
             }
-            .transformable(
-                state = rememberTransformableState { zoomChange, panChange, _ ->
-                    scope.launch {
-                        val newScale = (scale.value * zoomChange).coerceIn(1f, MAX_SCALE)
-                        scale.snapTo(newScale)
+            .pointerInput(page) {
+                // Zoom/pan is hand-rolled rather than `Modifier.transformable`
+                // because `transformable` consumes *every* drag — including a
+                // single-finger swipe at 1x — which starved the parent
+                // HorizontalPager and made page turning impossible. Here we only
+                // take the gesture when the user is pinching, or the page is
+                // already magnified; at 1x the drag is left for the pager.
+                while (true) {
+                    awaitPointerEventScope {
+                        awaitFirstDown(requireUnconsumed = false)
+                        var pressed = true
+                        while (pressed) {
+                            val event = awaitPointerEvent()
+                            val zoomChange = event.calculateZoom()
+                            val panChange = event.calculatePan()
+                            val rotationChange = event.calculateRotation()
+                            val pinching = event.changes.count { it.pressed } > 1
 
-                        val bound = maxOffset(newScale)
-                        val newOffset = if (newScale <= ZOOM_THRESHOLD) {
-                            Offset.Zero
-                        } else {
-                            Offset(
-                                (translation.value.x + panChange.x).coerceIn(-bound.x, bound.x),
-                                (translation.value.y + panChange.y).coerceIn(-bound.y, bound.y),
-                            )
+                            val takeOver = pinching || scale.value > ZOOM_THRESHOLD
+                            val moved = zoomChange != 1f ||
+                                rotationChange != 0f ||
+                                panChange != Offset.Zero
+
+                            if (takeOver && moved) {
+                                event.changes.forEach { if (it.pressed) it.consume() }
+                                scope.launch {
+                                    val newScale =
+                                        (scale.value * zoomChange).coerceIn(1f, MAX_SCALE)
+                                    scale.snapTo(newScale)
+
+                                    val bound = maxOffset(newScale)
+                                    val newOffset = if (newScale <= ZOOM_THRESHOLD) {
+                                        Offset.Zero
+                                    } else {
+                                        Offset(
+                                            (translation.value.x + panChange.x)
+                                                .coerceIn(-bound.x, bound.x),
+                                            (translation.value.y + panChange.y)
+                                                .coerceIn(-bound.y, bound.y),
+                                        )
+                                    }
+                                    translation.snapTo(newOffset)
+                                }
+                            }
+
+                            pressed = event.changes.any { it.pressed }
                         }
-                        translation.snapTo(newOffset)
                     }
-                },
-            ),
+                }
+            },
     ) {
         Image(
             bitmap = bitmap.asImageBitmap(),

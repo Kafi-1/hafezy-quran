@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hafeziquran.app.core.util.Resource
+import com.hafeziquran.app.core.util.toIntOrNullBangla
 import com.hafeziquran.app.data.preferences.ReadingMode
 import com.hafeziquran.app.presentation.theme.ReaderNightVeil
 import kotlinx.coroutines.launch
@@ -222,7 +223,11 @@ private fun ReaderBody(
     Box(Modifier.fillMaxSize()) {
         if (uiState.readingMode == ReadingMode.HORIZONTAL) {
             val pagerState = rememberPagerState(
-                initialPage = (uiState.currentPage - 1).coerceAtLeast(0),
+                // Both ends clamped: an index past the last page (a stale
+                // bookmark, a bad index entry) would otherwise be handed to
+                // LazyLayout and crash it.
+                initialPage = (uiState.currentPage - 1)
+                    .coerceIn(0, (uiState.pageCount - 1).coerceAtLeast(0)),
                 pageCount = { uiState.pageCount },
             )
 
@@ -488,7 +493,8 @@ private fun GoToPageDialog(
     onGo: (Int) -> Unit,
 ) {
     var text by remember { mutableStateOf(currentPage.toString()) }
-    val parsed = text.toIntOrNull()
+    // Accepts Bengali digits too, so "৪৪৮" jumps just like "448".
+    val parsed = text.toIntOrNullBangla()
     val isValid = parsed != null && parsed in 1..pageCount
 
     AlertDialog(

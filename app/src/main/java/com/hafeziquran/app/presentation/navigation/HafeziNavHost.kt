@@ -1,5 +1,6 @@
 package com.hafeziquran.app.presentation.navigation
 
+import android.util.Log
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -35,6 +36,8 @@ import com.hafeziquran.app.presentation.screens.surah.SurahListScreen
 import com.hafeziquran.app.presentation.screens.tasbeeh.TasbeehScreen
 
 private const val TRANSITION_MS = 280
+
+private const val TAG = "HafeziNavHost"
 
 /**
  * The app's navigation graph.
@@ -84,8 +87,8 @@ fun HafeziNavHost() {
             // ---------- Tabs ----------
             composable(Screen.Home.route) {
                 HomeScreen(
-                    onResumeReading = { navController.navigate(Screen.Reader.createRoute()) },
-                    onOpenReader = { page -> navController.navigate(Screen.Reader.createRoute(page)) },
+                    onResumeReading = { navController.openReader() },
+                    onOpenReader = { page -> navController.openReader(page) },
                     onSurahList = { navController.navigate(Screen.SurahList.route) },
                     onParaList = { navController.navigate(Screen.ParaList.route) },
                     onPageSearch = { navController.navigate(Screen.Search.route) },
@@ -97,7 +100,7 @@ fun HafeziNavHost() {
 
             composable(Screen.Bookmarks.route) {
                 BookmarksScreen(
-                    onOpenPage = { page -> navController.navigate(Screen.Reader.createRoute(page)) },
+                    onOpenPage = { page -> navController.openReader(page) },
                 )
             }
 
@@ -108,7 +111,7 @@ fun HafeziNavHost() {
                         // catalogue entry has no PDF in assets yet and is shown
                         // disabled in the list, so it can never reach this point.
                         if (book.asset == AppConstants.QURAN_PDF_ASSET) {
-                            navController.navigate(Screen.Reader.createRoute())
+                            navController.openReader()
                         }
                     },
                 )
@@ -136,21 +139,21 @@ fun HafeziNavHost() {
             composable(Screen.SurahList.route) {
                 SurahListScreen(
                     onBack = { navController.popBackStack() },
-                    onOpenPage = { page -> navController.navigate(Screen.Reader.createRoute(page)) },
+                    onOpenPage = { page -> navController.openReader(page) },
                 )
             }
 
             composable(Screen.ParaList.route) {
                 ParaListScreen(
                     onBack = { navController.popBackStack() },
-                    onOpenPage = { page -> navController.navigate(Screen.Reader.createRoute(page)) },
+                    onOpenPage = { page -> navController.openReader(page) },
                 )
             }
 
             composable(Screen.Search.route) {
                 SearchScreen(
                     onBack = { navController.popBackStack() },
-                    onOpenPage = { page -> navController.navigate(Screen.Reader.createRoute(page)) },
+                    onOpenPage = { page -> navController.openReader(page) },
                 )
             }
 
@@ -182,5 +185,25 @@ private fun NavHostController.switchTab(tab: TabRoute) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
         restoreState = true
+    }
+}
+
+/**
+ * Opens the reader, clamped to the document's real page range.
+ *
+ * Every page-bearing entry point (surah, para, bookmark, featured shortcut,
+ * search, "continue reading") funnels through here, so a bad index entry or a
+ * stale bookmark can never hand the graph a page it cannot resolve. If the
+ * navigation still throws — e.g. the destination is missing — we log the exact
+ * exception and fall back to resuming the last read page instead of letting the
+ * crash reach the user.
+ */
+private fun NavHostController.openReader(page: Int? = null) {
+    val safePage = page?.coerceIn(1, AppConstants.PHYSICAL_PAGE_COUNT)
+    val route = Screen.Reader.createRoute(safePage)
+    runCatching { navigate(route) }.onFailure { throwable ->
+        Log.e(TAG, "openReader(page=$page) failed for route '$route'", throwable)
+        runCatching { navigate(Screen.Reader.createRoute()) }
+            .onFailure { Log.e(TAG, "openReader fallback failed too", it) }
     }
 }
