@@ -22,4 +22,13 @@ object AppConstants {
      * them by `pageOffset` (currently 8) so they land on this 612-page scan.
      */
     const val PHYSICAL_PAGE_COUNT = 612
+
+    /** Downloadable Bangla translation mushaf (optional, ~25 MB). */
+    const val BANGLA_QURAN_URL = "https://tv.kafi.store.cv/banglaquryan.pdf"
+
+    /** File name the Bangla mushaf is stored under inside `filesDir`. */
+    const val BANGLA_QURAN_FILE = "bangla_quran.pdf"
+
+    /** Base path of the per-surah recitation CDN. */
+    const val AUDIO_BASE_URL = "https://cdn.islamic.network/quran/audio-surah/128"
 }

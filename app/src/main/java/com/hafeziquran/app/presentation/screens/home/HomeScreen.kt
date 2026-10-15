@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Spa
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -83,6 +84,7 @@ fun HomeScreen(
     onPageSearch: () -> Unit,
     onBookmarks: () -> Unit,
     onTasbeeh: () -> Unit,
+    onBanglaQuran: () -> Unit,
     onSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -139,6 +141,7 @@ fun HomeScreen(
                     onRecent = { state.lastReadPage?.let(onOpenReader) ?: onResumeReading() },
                     onBookmarks = onBookmarks,
                     onTasbeeh = onTasbeeh,
+                    onBanglaQuran = onBanglaQuran,
                     modifier = Modifier.padding(horizontal = spacing.md),
                 )
             }
@@ -461,12 +464,14 @@ private fun FeatureGrid(
     onRecent: () -> Unit,
     onBookmarks: () -> Unit,
     onTasbeeh: () -> Unit,
+    onBanglaQuran: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val items = listOf(
         FeatureItem("সূরা সমূহ", "১১৪টি সূরা", Icons.Outlined.MenuBook, onSurahList),
         FeatureItem("পারা সমূহ", "৩০ পারা", Icons.Outlined.FormatListNumbered, onParaList),
         FeatureItem("পৃষ্ঠা সার্চ", "যেকোনো পৃষ্ঠায় যান", Icons.Outlined.Search, onPageSearch),
+        FeatureItem("বাংলা কোরআন", "বাংলা অনুবাদ", Icons.Outlined.Translate, onBanglaQuran),
         FeatureItem("সর্বশেষ", "শেষ পড়া পৃষ্ঠা", Icons.Outlined.History, onRecent),
         FeatureItem("বুকমার্ক", "সংরক্ষিত পৃষ্ঠা", Icons.Outlined.BookmarkBorder, onBookmarks),
         FeatureItem("তাসবীহ", "ডিজিটাল কাউন্টার", Icons.Outlined.Spa, onTasbeeh),
@@ -477,6 +482,11 @@ private fun FeatureGrid(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { feature ->
                     FeatureCard(feature = feature, modifier = Modifier.weight(1f))
+                }
+                // An odd count leaves a half-width gap on the last row; a spacer
+                // keeps the lone card the same size as every other card.
+                if (row.size == 1) {
+                    Spacer(Modifier.weight(1f))
                 }
             }
         }

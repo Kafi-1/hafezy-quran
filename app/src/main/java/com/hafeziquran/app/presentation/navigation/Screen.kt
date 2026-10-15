@@ -55,6 +55,12 @@ sealed class Screen(val route: String) {
 
     data object SurahList : Screen("surah_list")
 
+    /** Download / manage the optional Bangla translation mushaf. */
+    data object BanglaQuran : Screen("bangla_quran")
+
+    /** Full-screen viewer for the downloaded Bangla translation. */
+    data object BanglaQuranViewer : Screen("bangla_quran_viewer")
+
     data object ParaList : Screen("para_list")
 
     /** Opened by the centre button in the bottom bar. */

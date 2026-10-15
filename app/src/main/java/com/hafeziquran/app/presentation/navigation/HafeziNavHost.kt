@@ -24,6 +24,8 @@ import com.hafeziquran.app.core.constants.AppConstants
 import com.hafeziquran.app.presentation.components.BottomNavBar
 import com.hafeziquran.app.presentation.components.TabRoute
 import com.hafeziquran.app.presentation.screens.books.IslamicBooksScreen
+import com.hafeziquran.app.presentation.screens.banglaquran.BanglaQuranScreen
+import com.hafeziquran.app.presentation.screens.banglaquran.BanglaQuranViewerScreen
 import com.hafeziquran.app.presentation.screens.bookmarks.BookmarksScreen
 import com.hafeziquran.app.presentation.screens.home.HomeScreen
 import com.hafeziquran.app.presentation.screens.info.InfoScreen
@@ -116,6 +118,7 @@ fun HafeziNavHost() {
                     onPageSearch = { navController.navigate(Screen.Search.route) },
                     onBookmarks = { navController.switchTab(TabRoute.Bookmarks) },
                     onTasbeeh = { navController.switchTab(TabRoute.Tasbeeh) },
+                    onBanglaQuran = { navController.navigate(Screen.BanglaQuran.route) },
                     onSettings = { navController.navigate(Screen.Settings.route) },
                 )
             }
@@ -170,6 +173,17 @@ fun HafeziNavHost() {
                     onBack = { navController.popBackStack() },
                     onOpenPage = { page -> navController.openReader(page) },
                 )
+            }
+
+            composable(Screen.BanglaQuran.route) {
+                BanglaQuranScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpen = { navController.navigate(Screen.BanglaQuranViewer.route) },
+                )
+            }
+
+            composable(Screen.BanglaQuranViewer.route) {
+                BanglaQuranViewerScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Screen.Search.route) {

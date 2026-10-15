@@ -5,7 +5,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -43,6 +45,13 @@ class UserPreferences @Inject constructor(
         val READER_NIGHT_MODE = booleanPreferencesKey("reader_night_mode")
         val TASBEEH_VIBRATION = booleanPreferencesKey("tasbeeh_vibration")
         val TASBEEH_SOUND = booleanPreferencesKey("tasbeeh_sound")
+
+        // Bangla translation mushaf. Kept in DataStore rather than Room so adding
+        // them needs no database migration: they are a handful of page numbers,
+        // not relational data, and the bookmarks must not share the mushaf's
+        // page-number key space.
+        val BANGLA_BOOKMARKS = stringSetPreferencesKey("bangla_bookmarks")
+        val BANGLA_LAST_PAGE = intPreferencesKey("bangla_last_page")
     }
 
     val themeMode: Flow<ThemeMode> = context.settingsDataStore.data.map { prefs ->
@@ -84,6 +93,27 @@ class UserPreferences @Inject constructor(
     val tasbeehSound: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
         prefs[Keys.TASBEEH_SOUND] ?: true
     }
+
+    /** Pages bookmarked in the downloaded Bangla mushaf (1-based). */
+    val banglaBookmarks: Flow<Set<Int>> = context.settingsDataStore.data.map { prefs ->
+        prefs[Keys.BANGLA_BOOKMARKS].orEmpty().mapNotNull { it.toIntOrNull() }.toSet()
+    }
+
+    /** Last page read in the downloaded Bangla mushaf (1-based). */
+    val banglaLastPage: Flow<Int> = context.settingsDataStore.data.map { prefs ->
+        prefs[Keys.BANGLA_LAST_PAGE] ?: 1
+    }
+
+    suspend fun toggleBanglaBookmark(page: Int) {
+        context.settingsDataStore.edit { prefs ->
+            val current = prefs[Keys.BANGLA_BOOKMARKS].orEmpty()
+            val key = page.toString()
+            prefs[Keys.BANGLA_BOOKMARKS] =
+                if (key in current) current - key else current + key
+        }
+    }
+
+    suspend fun setBanglaLastPage(page: Int) = edit(Keys.BANGLA_LAST_PAGE, page)
 
     suspend fun setThemeMode(mode: ThemeMode) = edit(Keys.THEME_MODE, mode.name)
 
