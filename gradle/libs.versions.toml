@@ -1,14 +1,19 @@
 [versions]
 agp = "8.6.1"
-kotlin = "2.0.20"
-ksp = "2.0.20-1.0.25"
-hilt = "2.52"
+# Kotlin (and its KSP) must be >= the version the pdfium AAR was compiled with.
+# io.legere:pdfiumandroid:1.0.35 ships Kotlin 2.2.0 metadata; a 2.0.x compiler
+# rejects it at kspDebugKotlin with "Module was compiled with an incompatible
+# version of Kotlin (2.2.0 vs 2.0.0)". KSP 2.0.x also moves us onto KSP2, which
+# needs the Hilt/Room bumps below.
+kotlin = "2.2.20"
+ksp = "2.2.20-2.0.4"
+hilt = "2.57.1"
 coreKtx = "1.13.1"
 lifecycle = "2.8.6"
 activityCompose = "1.9.2"
 composeBom = "2024.09.02"
 navigationCompose = "2.8.1"
-room = "2.6.1"
+room = "2.7.2"
 datastore = "1.1.1"
 hiltNavigationCompose = "1.2.0"
 pdfium = "1.0.35"
