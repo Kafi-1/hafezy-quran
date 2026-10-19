@@ -59,8 +59,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.api.CommonStatusCodes
 import com.hafeziquran.app.R
 import com.hafeziquran.app.presentation.screens.auth.AuthViewModel.Mode
 
@@ -114,7 +114,7 @@ fun AuthScreen(
             }
         } catch (exception: ApiException) {
             viewModel.onGoogleError(
-                if (exception.statusCode == CommonStatusCodes.SIGN_IN_CANCELLED) {
+                if (exception.statusCode == GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
                     "Google সাইন-ইন বাতিল হয়েছে"
                 } else {
                     "Google সাইন-ইন ব্যর্থ হয়েছে (কোড: ${exception.statusCode})"
