@@ -45,6 +45,15 @@ android {
     }
 
     signingConfigs {
+        // Fixed debug key committed at keystore/debug.keystore. Pinning it makes
+        // every debug APK share one certificate, so the Firebase Google Sign-In
+        // SHA-1 fingerprint never changes between CI builds.
+        getByName("debug") {
+            storeFile = rootProject.file("keystore/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         // Only created when a keystore.properties is present; a missing file must
         // not fail configuration.
         if (hasReleaseKeystore) {
@@ -60,6 +69,7 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
         }
         release {
             isMinifyEnabled = true

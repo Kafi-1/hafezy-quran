@@ -14,6 +14,8 @@ local.properties
 keystore.properties
 *.jks
 *.keystore
+# The fixed debug key is intentionally committed so the signing SHA-1 is stable.
+!keystore/debug.keystore
 
 # Claude Code local workspace
 .claude

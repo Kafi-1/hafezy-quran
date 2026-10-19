@@ -23,6 +23,34 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # One-time bootstrap: the fixed key is committed at keystore/debug.keystore.
+      # Until that file is in the repo, generate it and upload it so it can be
+      # committed. Once committed, this step is a no-op.
+      - name: Ensure fixed debug keystore
+        id: fixed_keystore
+        run: |
+          if [ -f keystore/debug.keystore ]; then
+            echo "generated=false" >> "$GITHUB_OUTPUT"
+            echo "Using committed keystore/debug.keystore"
+          else
+            mkdir -p keystore
+            keytool -genkeypair -v \
+              -keystore keystore/debug.keystore \
+              -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=Android Debug,O=Android,C=US"
+            echo "generated=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload generated keystore
+        if: steps.fixed_keystore.outputs.generated == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixed-debug-keystore
+          path: keystore/debug.keystore
+          if-no-files-found: error
+
       # The ubuntu runner already ships the Android SDK; we just point Gradle at
       # it and top up the exact platform/build-tools we compile against. (The
       # android-actions/setup-android action is intentionally avoided: on current
@@ -48,14 +76,17 @@ jobs:
       - name: Build debug APK
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 
-      # Firebase Google Sign-In needs the APK signing fingerprint. The keystore
-      # location varies between runner images, so try keytool on whatever
-      # debug.keystore exists and always fall back to reading the signed APK.
+      # Firebase Google Sign-In needs the APK signing fingerprint. The committed
+      # fixed keystore is authoritative; fall back to other locations only if it
+      # is somehow missing.
       - name: Print debug signing SHA-1
         if: always()
         run: |
-          KEYSTORE="$(find /home/runner /root /usr/local/lib/android -maxdepth 5 -name debug.keystore 2>/dev/null | head -n1)"
-          if [ -n "$KEYSTORE" ]; then
+          KEYSTORE="keystore/debug.keystore"
+          if [ ! -f "$KEYSTORE" ]; then
+            KEYSTORE="$(find /home/runner /root /usr/local/lib/android -maxdepth 5 -name debug.keystore 2>/dev/null | head -n1)"
+          fi
+          if [ -n "$KEYSTORE" ] && [ -f "$KEYSTORE" ]; then
             echo "Keystore: $KEYSTORE"
             keytool -list -v \
               -keystore "$KEYSTORE" \
