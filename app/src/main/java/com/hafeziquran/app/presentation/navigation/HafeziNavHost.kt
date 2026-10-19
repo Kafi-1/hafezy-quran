@@ -24,6 +24,7 @@ import com.hafeziquran.app.core.constants.AppConstants
 import com.hafeziquran.app.presentation.components.BottomNavBar
 import com.hafeziquran.app.presentation.components.TabRoute
 import com.hafeziquran.app.presentation.screens.audioquran.AudioQuranScreen
+import com.hafeziquran.app.presentation.screens.auth.AuthScreen
 import com.hafeziquran.app.presentation.screens.books.IslamicBooksScreen
 import com.hafeziquran.app.presentation.screens.banglaquran.BanglaQuranScreen
 import com.hafeziquran.app.presentation.screens.banglaquran.BanglaQuranViewerScreen
@@ -39,6 +40,8 @@ import com.hafeziquran.app.presentation.screens.sobok.SobokScreen
 import com.hafeziquran.app.presentation.screens.splash.SplashScreen
 import com.hafeziquran.app.presentation.screens.surah.SurahListScreen
 import com.hafeziquran.app.presentation.screens.tasbeeh.TasbeehScreen
+import com.hafeziquran.app.presentation.screens.videos.VideoPlayerScreen
+import com.hafeziquran.app.presentation.screens.videos.VideosScreen
 
 private const val TRANSITION_MS = 280
 
@@ -123,6 +126,7 @@ fun HafeziNavHost() {
                     onBanglaQuran = { navController.navigate(Screen.BanglaQuran.route) },
                     onAudioQuran = { navController.navigate(Screen.AudioQuran.route) },
                     onSobok = { navController.navigate(Screen.Sobok.route) },
+                    onVideos = { navController.navigate(Screen.Videos.route) },
                     onSettings = { navController.navigate(Screen.Settings.route) },
                 )
             }
@@ -198,6 +202,45 @@ fun HafeziNavHost() {
                 SobokScreen(onBack = { navController.popBackStack() })
             }
 
+            composable(Screen.Videos.route) {
+                VideosScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenVideo = { video ->
+                        navController.navigate(
+                            Screen.VideoPlayer.createRoute(video.youtubeId, video.title),
+                        )
+                    },
+                )
+            }
+
+            composable(
+                route = Screen.VideoPlayer.route,
+                arguments = listOf(
+                    navArgument(Screen.VideoPlayer.ARG_VIDEO_ID) { type = NavType.StringType },
+                    navArgument(Screen.VideoPlayer.ARG_TITLE) {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                ),
+            ) { entry ->
+                VideoPlayerScreen(
+                    youtubeId = entry.arguments
+                        ?.getString(Screen.VideoPlayer.ARG_VIDEO_ID)
+                        .orEmpty(),
+                    title = entry.arguments
+                        ?.getString(Screen.VideoPlayer.ARG_TITLE)
+                        .orEmpty(),
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(Screen.Auth.route) {
+                AuthScreen(
+                    onBack = { navController.popBackStack() },
+                    onSignedIn = { navController.popBackStack() },
+                )
+            }
+
             composable(Screen.Search.route) {
                 SearchScreen(
                     onBack = { navController.popBackStack() },
@@ -210,6 +253,7 @@ fun HafeziNavHost() {
                     onBack = { navController.popBackStack() },
                     onOpenPrivacy = { navController.navigate(Screen.Privacy.route) },
                     onOpenAbout = { navController.navigate(Screen.About.route) },
+                    onOpenAuth = { navController.navigate(Screen.Auth.route) },
                 )
             }
 

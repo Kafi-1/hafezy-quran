@@ -3,6 +3,8 @@ package com.hafeziquran.app.presentation.screens.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hafeziquran.app.BuildConfig
+import com.hafeziquran.app.data.auth.AuthRepository
+import com.hafeziquran.app.data.auth.AuthUser
 import com.hafeziquran.app.data.preferences.ThemeMode
 import com.hafeziquran.app.data.preferences.UserPreferences
 import com.hafeziquran.app.data.repository.SobokModelRepository
@@ -28,7 +30,11 @@ data class SobokModelState(
 class SettingsViewModel @Inject constructor(
     private val preferences: UserPreferences,
     private val sobokModelRepository: SobokModelRepository,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
+
+    /** Null in guest mode; the Settings row then offers sign-in instead of logout. */
+    val user: StateFlow<AuthUser?> = authRepository.user
 
     val themeMode: StateFlow<ThemeMode> = preferences.themeMode
         .stateIn(viewModelScope, SharingStarted.Eagerly, ThemeMode.SYSTEM)
@@ -60,6 +66,8 @@ class SettingsViewModel @Inject constructor(
             refreshSobokModel()
         }
     }
+
+    fun signOut() = authRepository.signOut()
 
     private fun refreshSobokModel() {
         _sobokModel.value = SobokModelState(

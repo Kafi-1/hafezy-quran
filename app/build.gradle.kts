@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
 }
 
 // ---------------------------------------------------------------------------
@@ -158,4 +159,14 @@ dependencies {
     // --- Audio (ExoPlayer + MediaSession: streaming, offline, background play) ---
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
+
+    // --- Firebase: optional sign-in + Firestore video catalogue ---
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.play.services.auth)
+    implementation(libs.kotlinx.coroutines.play.services)
+
+    // --- Thumbnails for the video catalogue ---
+    implementation(libs.coil.compose)
 }

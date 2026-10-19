@@ -1,5 +1,7 @@
 package com.hafeziquran.app.presentation.navigation
 
+import android.net.Uri
+
 /** Reader nav-argument contract, shared by the route builder and ViewModel. */
 private const val READER_ARG_PAGE = "page"
 
@@ -66,6 +68,21 @@ sealed class Screen(val route: String) {
 
     /** Offline tilawat checker (record → Whisper → word highlights). */
     data object Sobok : Screen("sobok")
+
+    /** Firestore-backed video catalogue; open to guests as well. */
+    data object Videos : Screen("videos")
+
+    /** In-app YouTube player for one catalogue entry. */
+    data object VideoPlayer : Screen("video_player?videoId={videoId}&title={title}") {
+        const val ARG_VIDEO_ID = "videoId"
+        const val ARG_TITLE = "title"
+
+        fun createRoute(videoId: String, title: String): String =
+            "video_player?$ARG_VIDEO_ID=${Uri.encode(videoId)}&$ARG_TITLE=${Uri.encode(title)}"
+    }
+
+    /** Optional sign-in. Guests never have to enter this screen. */
+    data object Auth : Screen("auth")
 
     data object ParaList : Screen("para_list")
 

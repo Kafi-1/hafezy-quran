@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PrivacyTip
@@ -53,6 +54,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hafeziquran.app.core.util.AppLinks
 import com.hafeziquran.app.core.util.toReadableSize
+import com.hafeziquran.app.data.auth.AuthUser
 import com.hafeziquran.app.data.preferences.ThemeMode
 import com.hafeziquran.app.presentation.theme.AppColorTheme
 
@@ -61,11 +63,13 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenPrivacy: () -> Unit,
     onOpenAbout: () -> Unit,
+    onOpenAuth: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val colorTheme by viewModel.colorTheme.collectAsStateWithLifecycle()
     val sobokModel by viewModel.sobokModel.collectAsStateWithLifecycle()
+    val user by viewModel.user.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var confirmDeleteModel by remember { mutableStateOf(false) }
 
@@ -91,6 +95,13 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 24.dp),
         ) {
+            SectionTitle("অ্যাকাউন্ট")
+            AccountRow(
+                user = user,
+                onLogin = onOpenAuth,
+                onLogout = viewModel::signOut,
+            )
+
             SectionTitle("থিম")
             ThemeModeRow(
                 selected = themeMode,
@@ -229,6 +240,59 @@ private fun SobokModelRow(
             if (downloaded) {
                 TextButton(onClick = onDelete) {
                     Text("ডিলিট", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 56.dp, end = 16.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+        )
+    }
+}
+
+@Composable
+private fun AccountRow(
+    user: AuthUser?,
+    onLogin: () -> Unit,
+    onLogout: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = user == null, onClick = onLogin)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.AccountCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = user?.displayName?.takeIf { it.isNotBlank() }
+                        ?: user?.email
+                        ?: "লগইন করুন",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = when {
+                        user == null -> "ঐচ্ছিক — অতিথি হিসেবেও সব ফিচার চলবে"
+                        user.displayName.isNullOrBlank() -> "লগইন করা আছে"
+                        else -> user.email.orEmpty()
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (user == null) {
+                TextButton(onClick = onLogin) { Text("লগইন") }
+            } else {
+                TextButton(onClick = onLogout) {
+                    Text("লগআউট", color = MaterialTheme.colorScheme.error)
                 }
             }
         }
