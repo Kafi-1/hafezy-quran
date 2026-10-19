@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "479562768307-feopks9n36fls8juhmpe2bfmj0i4sd08.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.hafeziquran.app",
+            "certificate_hash": "9f9601bf99d4c7acd086e10965ce7af5c5c7f749"
+          }
+        },
+        {
           "client_id": "479562768307-hj2cbj44o2k8mkllb0e8oedboqlous0k.apps.googleusercontent.com",
           "client_type": 3
         }
