@@ -48,19 +48,28 @@ jobs:
       - name: Build debug APK
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 
-      # The runner generates ~/.android/debug.keystore on the first debug build.
-      # Firebase Google Sign-In needs this fingerprint registered for the app.
+      # Firebase Google Sign-In needs the APK signing fingerprint. The keystore
+      # location varies between runner images, so try keytool on whatever
+      # debug.keystore exists and always fall back to reading the signed APK.
       - name: Print debug signing SHA-1
         if: always()
         run: |
-          if [ -f "$HOME/.android/debug.keystore" ]; then
+          KEYSTORE="$(find /home/runner /root /usr/local/lib/android -maxdepth 5 -name debug.keystore 2>/dev/null | head -n1)"
+          if [ -n "$KEYSTORE" ]; then
+            echo "Keystore: $KEYSTORE"
             keytool -list -v \
-              -keystore "$HOME/.android/debug.keystore" \
+              -keystore "$KEYSTORE" \
               -alias androiddebugkey \
               -storepass android -keypass android \
-              | grep -E "SHA1:|SHA-1:|SHA256:"
+              | grep -E "SHA1:|SHA-1:|SHA256:" || true
           else
-            echo "debug.keystore not found"
+            echo "debug.keystore not found; reading certificate from the APK"
+          fi
+
+          APKSIGNER="$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" -name apksigner -type f | sort | tail -n1)"
+          if [ -n "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk \
+              | grep -E "Signer #1 certificate (DN|SHA-1|SHA-256)" || true
           fi
 
       - name: Upload APK artifact
