@@ -37,7 +37,7 @@ fun splitAyahWords(text: String): List<String> =
  * `ٱلرَّحْمَٰنِ` and `الرحمن` normalise to the same word.
  */
 fun normalizeArabicWord(word: String): String {
-    val normalized = word.normalize(java.text.Normalizer.Form.NFC)
+    val normalized = java.text.Normalizer.normalize(word, java.text.Normalizer.Form.NFC)
         .replace(DIACRITICS, "")
         .replace(TATWEEL, "")
         .replace(ALEF_VARIANTS, "\u0627")
