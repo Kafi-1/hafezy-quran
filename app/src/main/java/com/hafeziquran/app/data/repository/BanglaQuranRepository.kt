@@ -34,6 +34,8 @@ class BanglaQuranRepository @Inject constructor(
 
     fun startDownload() = downloadManager.start(KEY, AppConstants.BANGLA_QURAN_URL, file)
 
+    fun pauseDownload() = downloadManager.pause(KEY)
+
     fun cancelDownload() = downloadManager.cancel(KEY)
 
     fun isDownloaded(): Boolean = file.exists() && file.length() > 0L

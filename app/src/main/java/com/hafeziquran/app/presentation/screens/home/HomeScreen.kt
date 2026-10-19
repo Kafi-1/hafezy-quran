@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.FormatListNumbered
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Spa
@@ -65,9 +66,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hafeziquran.app.R
+import com.hafeziquran.app.core.constants.AppConstants
 import com.hafeziquran.app.core.util.AppLinks
 import com.hafeziquran.app.core.util.Resource
-import com.hafeziquran.app.presentation.components.AdBanner
+import com.hafeziquran.app.core.util.toBanglaDigits
 import com.hafeziquran.app.presentation.components.ShimmerBox
 import com.hafeziquran.app.presentation.theme.Gold
 import com.hafeziquran.app.presentation.theme.LocalSpacing
@@ -87,6 +89,7 @@ fun HomeScreen(
     onTasbeeh: () -> Unit,
     onBanglaQuran: () -> Unit,
     onAudioQuran: () -> Unit,
+    onSobok: () -> Unit,
     onSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -137,6 +140,7 @@ fun HomeScreen(
 
             item {
                 FeatureGrid(
+                    lastReadPage = state.lastReadPage,
                     onSurahList = onSurahList,
                     onParaList = onParaList,
                     onPageSearch = onPageSearch,
@@ -145,12 +149,9 @@ fun HomeScreen(
                     onTasbeeh = onTasbeeh,
                     onBanglaQuran = onBanglaQuran,
                     onAudioQuran = onAudioQuran,
+                    onSobok = onSobok,
                     modifier = Modifier.padding(horizontal = spacing.md),
                 )
-            }
-
-            item {
-                Box(Modifier.padding(horizontal = spacing.md)) { AdBanner() }
             }
         }
     }
@@ -189,7 +190,7 @@ private fun HomeHeader(onSettings: () -> Unit) {
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
-                    painter = painterResource(R.drawable.ic_launcher_foreground),
+                    painter = painterResource(R.drawable.app_icon),
                     contentDescription = null,
                     modifier = Modifier.size(40.dp),
                 )
@@ -213,8 +214,6 @@ private fun HomeHeader(onSettings: () -> Unit) {
                 )
             }
 
-            AdBadge()
-
             IconButton(onClick = { AppLinks.rateApp(context) }) {
                 Icon(
                     imageVector = Icons.Filled.Star,
@@ -234,23 +233,6 @@ private fun HomeHeader(onSettings: () -> Unit) {
     }
 }
 
-/** Small translucent "Ad" pill, as in the original header. */
-@Composable
-private fun AdBadge() {
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = Color.White.copy(alpha = 0.18f),
-    ) {
-        Text(
-            text = "Ad",
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-        )
-    }
-}
-
 @Composable
 private fun ContinueReadingCard(
     state: HomeUiState,
@@ -260,6 +242,9 @@ private fun ContinueReadingCard(
 ) {
     val spacing = LocalSpacing.current
     val targetPage = state.lastReadPage ?: 1
+    // Before the PDF opens we still show the mushaf's real extent rather than a
+    // bare page number, so "পৃষ্ঠা X / ৬১২" never flickers to "পৃষ্ঠা X".
+    val totalPages = state.totalPages.takeIf { it > 0 } ?: AppConstants.PHYSICAL_PAGE_COUNT
 
     val preview by produceState<Resource<android.graphics.Bitmap>?>(
         initialValue = null,
@@ -300,15 +285,16 @@ private fun ContinueReadingCard(
                                 ?: "সূরা: আল-ফাতিহা",
                         )
                         InfoPill(
-                            text = state.lastReadPara?.let { "পারা: ${it.number}" } ?: "পারা: ১",
+                            text = state.lastReadPara?.let { "পারা: ${it.number.toBanglaDigits()}" }
+                                ?: "পারা: ১",
                         )
                     }
 
                     Spacer(Modifier.height(6.dp))
 
                     Text(
-                        text = "পৃষ্ঠা $targetPage" +
-                            if (state.totalPages > 0) " / ${state.totalPages}" else "",
+                        text = "পৃষ্ঠা ${targetPage.toBanglaDigits()} / " +
+                            totalPages.toBanglaDigits(),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -461,6 +447,7 @@ private fun FeaturedStrip(
 
 @Composable
 private fun FeatureGrid(
+    lastReadPage: Int?,
     onSurahList: () -> Unit,
     onParaList: () -> Unit,
     onPageSearch: () -> Unit,
@@ -469,6 +456,7 @@ private fun FeatureGrid(
     onTasbeeh: () -> Unit,
     onBanglaQuran: () -> Unit,
     onAudioQuran: () -> Unit,
+    onSobok: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val items = listOf(
@@ -477,7 +465,13 @@ private fun FeatureGrid(
         FeatureItem("পৃষ্ঠা সার্চ", "যেকোনো পৃষ্ঠায় যান", Icons.Outlined.Search, onPageSearch),
         FeatureItem("বাংলা কোরআন", "বাংলা অনুবাদ", Icons.Outlined.Translate, onBanglaQuran),
         FeatureItem("অডিও কোরআন", "তিলাওয়াত শুনুন", Icons.Outlined.Headphones, onAudioQuran),
-        FeatureItem("সর্বশেষ", "শেষ পড়া পৃষ্ঠা", Icons.Outlined.History, onRecent),
+        FeatureItem("সবক", "তেলাওয়াত যাচাই (অফলাইন)", Icons.Outlined.RecordVoiceOver, onSobok),
+        FeatureItem(
+            "সর্বশেষ",
+            lastReadPage?.let { "পৃষ্ঠা ${it.toBanglaDigits()}" } ?: "শেষ পড়া পৃষ্ঠা",
+            Icons.Outlined.History,
+            onRecent,
+        ),
         FeatureItem("বুকমার্ক", "সংরক্ষিত পৃষ্ঠা", Icons.Outlined.BookmarkBorder, onBookmarks),
         FeatureItem("তাসবীহ", "ডিজিটাল কাউন্টার", Icons.Outlined.Spa, onTasbeeh),
     )

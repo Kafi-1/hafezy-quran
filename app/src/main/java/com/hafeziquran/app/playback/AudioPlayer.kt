@@ -3,15 +3,21 @@ package com.hafeziquran.app.playback
 import android.content.ComponentName
 import android.content.Context
 import androidx.core.content.ContextCompat
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +30,9 @@ data class PlaybackState(
     val currentSurah: Int? = null,
     val hasNext: Boolean = false,
     val hasPrevious: Boolean = false,
+    val positionMs: Long = 0L,
+    val durationMs: Long = 0L,
+    val speed: Float = 1f,
 )
 
 /**
@@ -42,6 +51,8 @@ class AudioPlayer @Inject constructor(
     val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
     private var controller: MediaController? = null
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) = publish()
@@ -62,6 +73,16 @@ class AudioPlayer @Inject constructor(
             },
             ContextCompat.getMainExecutor(context),
         )
+
+        // Player.Listener only fires on state transitions, not as playback
+        // advances; the seek bar needs a clock. Poll while playing so an idle
+        // app does no work.
+        scope.launch {
+            while (true) {
+                if (controller?.isPlaying == true) publish()
+                delay(POSITION_POLL_MS)
+            }
+        }
     }
 
     /** Replaces the queue with [items] and starts playing at [startIndex]. */
@@ -92,6 +113,21 @@ class AudioPlayer @Inject constructor(
         controller?.stop()
     }
 
+    fun seekTo(positionMs: Long) {
+        val c = controller ?: return
+        val duration = c.duration.takeIf { it != C.TIME_UNSET && it > 0L }
+        c.seekTo(
+            if (duration != null) positionMs.coerceIn(0L, duration)
+            else positionMs.coerceAtLeast(0L),
+        )
+        publish()
+    }
+
+    fun setSpeed(speed: Float) {
+        controller?.setPlaybackSpeed(speed.coerceIn(0.5f, 2f))
+        publish()
+    }
+
     private fun publish() {
         val c = controller ?: return
         _state.value = PlaybackState(
@@ -101,6 +137,13 @@ class AudioPlayer @Inject constructor(
             currentSurah = c.currentMediaItem?.mediaId?.toIntOrNull(),
             hasNext = c.hasNextMediaItem(),
             hasPrevious = c.hasPreviousMediaItem(),
+            positionMs = c.currentPosition.coerceAtLeast(0L),
+            durationMs = c.duration.takeIf { it != C.TIME_UNSET && it > 0L } ?: 0L,
+            speed = c.playbackParameters.speed,
         )
+    }
+
+    private companion object {
+        const val POSITION_POLL_MS = 500L
     }
 }

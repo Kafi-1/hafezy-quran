@@ -61,35 +61,37 @@ fun BottomNavBar(
             tonalElevation = 6.dp,
             shadowElevation = 12.dp,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(BAR_HEIGHT)
-                    // Keeps the bar above the system navigation bar while the
-                    // surface colour still fills behind it.
-                    .navigationBarsPadding()
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                leftTabs.forEach { tab ->
-                    NavBarItem(
-                        tab = tab,
-                        selected = tab.route == currentRoute,
-                        onClick = { onTabSelected(tab) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+            // The inset is applied *around* the fixed-height row: the surface then
+            // extends behind the system navigation area instead of squeezing the
+            // bar content into a 62 dp box that is partly hidden by it.
+            Box(modifier = Modifier.navigationBarsPadding()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(BAR_HEIGHT)
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    leftTabs.forEach { tab ->
+                        NavBarItem(
+                            tab = tab,
+                            selected = tab.route == currentRoute,
+                            onClick = { onTabSelected(tab) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
 
-                // Reserved gap for the centre button.
-                Box(modifier = Modifier.weight(1f))
+                    // Reserved gap for the centre button.
+                    Box(modifier = Modifier.weight(1f))
 
-                rightTabs.forEach { tab ->
-                    NavBarItem(
-                        tab = tab,
-                        selected = tab.route == currentRoute,
-                        onClick = { onTabSelected(tab) },
-                        modifier = Modifier.weight(1f),
-                    )
+                    rightTabs.forEach { tab ->
+                        NavBarItem(
+                            tab = tab,
+                            selected = tab.route == currentRoute,
+                            onClick = { onTabSelected(tab) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         }

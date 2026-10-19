@@ -64,6 +64,9 @@ sealed class Screen(val route: String) {
     /** Streaming / offline recitation with background playback. */
     data object AudioQuran : Screen("audio_quran")
 
+    /** Offline tilawat checker (record → Whisper → word highlights). */
+    data object Sobok : Screen("sobok")
+
     data object ParaList : Screen("para_list")
 
     /** Opened by the centre button in the bottom bar. */

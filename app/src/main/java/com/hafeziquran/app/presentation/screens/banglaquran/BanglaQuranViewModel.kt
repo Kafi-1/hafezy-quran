@@ -52,6 +52,8 @@ class BanglaQuranViewModel @Inject constructor(
 
     fun download() = repository.startDownload()
 
+    fun pause() = repository.pauseDownload()
+
     fun cancel() = repository.cancelDownload()
 
     fun delete() = repository.delete()

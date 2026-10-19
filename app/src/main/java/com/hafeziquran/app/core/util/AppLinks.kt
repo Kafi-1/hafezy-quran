@@ -27,7 +27,7 @@ object AppLinks {
     }
 
     fun shareApp(context: Context) {
-        val text = "হাফেজী কোরআন শরীফ অ্যাপটি ব্যবহার করে দেখুন: " +
+        val text = "Hafezy Quran অ্যাপটি ব্যবহার করে দেখুন: " +
             PLAY_STORE_BASE + BuildConfig.APPLICATION_ID
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"

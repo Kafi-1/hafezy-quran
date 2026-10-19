@@ -10,21 +10,6 @@ plugins {
 }
 
 // ---------------------------------------------------------------------------
-// AdMob IDs
-// ---------------------------------------------------------------------------
-// Google's official *test* IDs — used unconditionally by debug builds so dev taps
-// are harmless, and as the fallback for release so a fresh checkout still builds.
-val testAdmobAppId = "ca-app-pub-3940256099942544~3347511713"
-val testBannerUnitId = "ca-app-pub-3940256099942544/9214589741"
-
-// Real IDs for the shipping build are read from gradle.properties
-// (`admobAppId` / `admobBannerUnitId`) so no production ID is ever hard-coded here.
-val prodAdmobAppId = (findProperty("admobAppId") as String?)
-    ?.takeIf { it.isNotBlank() } ?: testAdmobAppId
-val prodBannerUnitId = (findProperty("admobBannerUnitId") as String?)
-    ?.takeIf { it.isNotBlank() } ?: testBannerUnitId
-
-// ---------------------------------------------------------------------------
 // Release signing
 // ---------------------------------------------------------------------------
 // Credentials live in a git-ignored keystore.properties (see .gitignore). When it
@@ -39,6 +24,8 @@ val keystoreProps = Properties().apply {
 android {
     namespace = "com.hafeziquran.app"
     compileSdk = 35
+    // Required by the vendored whisper.cpp / ggml CMake build.
+    ndkVersion = "27.0.12077973"
 
     defaultConfig {
         applicationId = "com.hafeziquran.app"
@@ -48,8 +35,6 @@ android {
         versionName = "1.0.0"
 
         vectorDrawables { useSupportLibrary = true }
-        // Overridden per build type below: test ID in debug, real ID in release.
-        manifestPlaceholders["admobAppId"] = prodAdmobAppId
 
         // Ship only the two ABIs real phones use. Pdfium's native libs for
         // x86/x86_64 are ~5 MB each and only matter to emulators.
@@ -74,9 +59,6 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
-            // Debug always ships Google's test Ads so development taps are safe.
-            manifestPlaceholders["admobAppId"] = testAdmobAppId
-            buildConfigField("String", "ADMOB_BANNER_UNIT_ID", "\"$testBannerUnitId\"")
         }
         release {
             isMinifyEnabled = true
@@ -85,9 +67,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Real IDs from gradle.properties; falls back to the test IDs if unset.
-            manifestPlaceholders["admobAppId"] = prodAdmobAppId
-            buildConfigField("String", "ADMOB_BANNER_UNIT_ID", "\"$prodBannerUnitId\"")
             // Signed with the release key when available, else the debug key so the
             // APK is still installable for local smoke-testing.
             signingConfig = if (hasReleaseKeystore) {
@@ -110,6 +89,13 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     // The 13 MB mushaf PDF is already compressed; keep it uncompressed-in-APK-safe
@@ -168,9 +154,6 @@ dependencies {
 
     // --- JSON (tasbeeh.json) ---
     implementation(libs.kotlinx.serialization.json)
-
-    // --- Ads (banner on Home only; never shown on the Quran reader) ---
-    implementation(libs.play.services.ads)
 
     // --- Audio (ExoPlayer + MediaSession: streaming, offline, background play) ---
     implementation(libs.androidx.media3.exoplayer)

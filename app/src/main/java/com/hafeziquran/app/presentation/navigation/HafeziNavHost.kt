@@ -35,6 +35,7 @@ import com.hafeziquran.app.presentation.screens.para.ParaListScreen
 import com.hafeziquran.app.presentation.screens.reader.ReaderScreen
 import com.hafeziquran.app.presentation.screens.search.SearchScreen
 import com.hafeziquran.app.presentation.screens.settings.SettingsScreen
+import com.hafeziquran.app.presentation.screens.sobok.SobokScreen
 import com.hafeziquran.app.presentation.screens.splash.SplashScreen
 import com.hafeziquran.app.presentation.screens.surah.SurahListScreen
 import com.hafeziquran.app.presentation.screens.tasbeeh.TasbeehScreen
@@ -121,6 +122,7 @@ fun HafeziNavHost() {
                     onTasbeeh = { navController.switchTab(TabRoute.Tasbeeh) },
                     onBanglaQuran = { navController.navigate(Screen.BanglaQuran.route) },
                     onAudioQuran = { navController.navigate(Screen.AudioQuran.route) },
+                    onSobok = { navController.navigate(Screen.Sobok.route) },
                     onSettings = { navController.navigate(Screen.Settings.route) },
                 )
             }
@@ -190,6 +192,10 @@ fun HafeziNavHost() {
 
             composable(Screen.AudioQuran.route) {
                 AudioQuranScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(Screen.Sobok.route) {
+                SobokScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Screen.Search.route) {

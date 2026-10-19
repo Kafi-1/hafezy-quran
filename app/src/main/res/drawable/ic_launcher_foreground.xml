@@ -1,29 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive-icon foreground: gold crescent above an open mushaf.
-     Content is kept inside the 72dp safe zone of the 108dp canvas. -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-
-    <!-- Crescent moon -->
-    <path
-        android:fillColor="#D4AF37"
-        android:pathData="M58,22 A18,18 0 1 0 58,58 A14,14 0 1 1 58,22 Z" />
-
-    <!-- Open book: left page -->
-    <path
-        android:fillColor="#FFFBF2"
-        android:pathData="M30,62 L52,58 L52,88 L30,92 Z" />
-
-    <!-- Open book: right page -->
-    <path
-        android:fillColor="#FFFBF2"
-        android:pathData="M78,62 L56,58 L56,88 L78,92 Z" />
-
-    <!-- Book spine -->
-    <path
-        android:fillColor="#D4AF37"
-        android:pathData="M51,58 H57 V88.5 H51 Z" />
-</vector>
+<!-- The brand artwork is a bitmap; inset it into the adaptive icon's 72dp safe
+     zone so the full gold frame survives every launcher mask shape. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/app_icon"
+    android:insetLeft="18dp"
+    android:insetTop="18dp"
+    android:insetRight="18dp"
+    android:insetBottom="18dp" />

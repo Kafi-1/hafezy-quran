@@ -18,9 +18,12 @@
     @kotlinx.serialization.Serializable <fields>;
 }
 
-# Google AdMob
--keep class com.google.android.gms.ads.** { *; }
--dontwarn com.google.android.gms.ads.**
-
 # Pdfium uses reflection for optional features.
 -dontwarn io.legere.pdfiumandroid.**
+
+# Whisper JNI: native method names are bound to the Kotlin class/package at
+# link time, so R8 must neither rename the bridge nor strip its methods.
+-keep class com.hafeziquran.app.data.whisper.WhisperBridge { *; }
+-keepclasseswithmembernames class * {
+    native <methods>;
+}

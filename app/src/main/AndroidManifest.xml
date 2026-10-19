@@ -2,12 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Ads (Home screen only) -->
+    <!-- Model/PDF downloads and audio streaming -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Digital Tasbeeh haptics -->
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Sobok: on-device recitation checking -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Audio Quran: keep reciting with the screen off, with transport controls -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -27,10 +30,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.HafeziQuran"
         tools:targetApi="35">
-
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="${admobAppId}" />
 
         <activity
             android:name=".MainActivity"

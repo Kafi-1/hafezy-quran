@@ -19,7 +19,6 @@ hiltNavigationCompose = "1.2.0"
 pdfium = "1.0.35"
 kotlinxSerialization = "1.7.3"
 splashscreen = "1.0.1"
-playServicesAds = "23.3.0"
 media3 = "1.4.1"
 
 [libraries]
@@ -54,8 +53,6 @@ androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navig
 # `io.legere.pdfiumandroid`; API is source-compatible with the old one.
 pdfium = { group = "io.legere", name = "pdfiumandroid", version.ref = "pdfium" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
-
-play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "playServicesAds" }
 
 # ExoPlayer + MediaSession. The CDN serves plain MP3, so only the
 # exoplayer-core-ish artifact and the session (for background + notification

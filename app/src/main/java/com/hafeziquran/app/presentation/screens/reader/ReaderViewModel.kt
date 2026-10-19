@@ -78,6 +78,9 @@ class ReaderViewModel @Inject constructor(
 
     private val currentPage = MutableStateFlow(1)
 
+    /** Last page persisted to Room, so a settle that changes nothing is a no-op. */
+    private var savedPage: Int = -1
+
     init {
         observePreferences()
         observeBookmarkState()
@@ -148,6 +151,12 @@ class ReaderViewModel @Inject constructor(
                     }
 
                     currentPage.value = startPage
+                    // Opening the reader *is* reading: persist immediately so a
+                    // jump from a surah/para survives even if the user leaves
+                    // before turning a page (the pager's first settle re-emits
+                    // this same page, which the old equality guard swallowed).
+                    savedPage = startPage
+                    readingPositionRepository.saveLastPage(startPage)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -201,9 +210,10 @@ class ReaderViewModel @Inject constructor(
 
     /** Called once a page settles, whether from a swipe or a programmatic jump. */
     fun onPageSettled(page: Int) {
-        if (currentPage.value == page) return
         currentPage.value = page
         _uiState.update { it.copy(currentPage = page) }
+        if (page == savedPage) return
+        savedPage = page
         viewModelScope.launch {
             readingPositionRepository.saveLastPage(page)
         }

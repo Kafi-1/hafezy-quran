@@ -34,6 +34,9 @@ data class AudioQuranUiState(
     val nowPlaying: SurahInfo? = null,
     val isPlaying: Boolean = false,
     val buffering: Boolean = false,
+    val positionMs: Long = 0L,
+    val durationMs: Long = 0L,
+    val speed: Float = 1f,
 )
 
 /**
@@ -105,6 +108,9 @@ class AudioQuranViewModel @Inject constructor(
                         nowPlaying = playback.currentSurah?.let { n -> catalogue.firstOrNull { s -> s.number == n } },
                         isPlaying = playback.playing,
                         buffering = playback.buffering,
+                        positionMs = playback.positionMs,
+                        durationMs = playback.durationMs,
+                        speed = playback.speed,
                     )
                 }
             }
@@ -140,13 +146,22 @@ class AudioQuranViewModel @Inject constructor(
 
     fun previous() = player.previous()
 
+    fun seekTo(positionMs: Long) = player.seekTo(positionMs)
+
+    fun setSpeed(speed: Float) = player.setSpeed(speed)
+
     fun download(surahNumber: Int) = audioRepository.download(_ui.value.reciter, surahNumber)
+
+    fun pauseDownload(surahNumber: Int) =
+        audioRepository.pauseDownload(_ui.value.reciter, surahNumber)
 
     fun cancelDownload(surahNumber: Int) = audioRepository.cancelDownload(_ui.value.reciter, surahNumber)
 
     fun delete(surahNumber: Int) = audioRepository.delete(_ui.value.reciter, surahNumber)
 
     fun downloadAll() = audioRepository.downloadAll(_ui.value.reciter, catalogue.map { it.number })
+
+    fun pauseDownloadAll() = audioRepository.pauseDownloadAll()
 
     fun cancelDownloadAll() = audioRepository.cancelDownloadAll()
 

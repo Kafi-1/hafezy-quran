@@ -18,6 +18,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.DownloadDone
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -133,8 +135,23 @@ fun BanglaQuranScreen(
                     Spacer(Modifier.height(18.dp))
 
                     when (val download = state.download) {
-                        is DownloadStatus.InProgress -> DownloadInProgress(
-                            download = download,
+                        is DownloadStatus.InProgress -> DownloadProgress(
+                            fraction = download.fraction,
+                            bytes = download.bytes,
+                            total = download.total,
+                            paused = false,
+                            onPause = viewModel::pause,
+                            onResume = viewModel::download,
+                            onCancel = viewModel::cancel,
+                        )
+
+                        is DownloadStatus.Paused -> DownloadProgress(
+                            fraction = download.fraction,
+                            bytes = download.bytes,
+                            total = download.total,
+                            paused = true,
+                            onPause = viewModel::pause,
+                            onResume = viewModel::download,
                             onCancel = viewModel::cancel,
                         )
 
@@ -160,12 +177,17 @@ fun BanglaQuranScreen(
 }
 
 @Composable
-private fun DownloadInProgress(
-    download: DownloadStatus.InProgress,
+private fun DownloadProgress(
+    fraction: Float,
+    bytes: Long,
+    total: Long,
+    paused: Boolean,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
     onCancel: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        val indeterminate = download.total <= 0L
+        val indeterminate = total <= 0L && !paused
         if (indeterminate) {
             LinearProgressIndicator(
                 modifier = Modifier
@@ -175,23 +197,27 @@ private fun DownloadInProgress(
             )
         } else {
             LinearProgressIndicator(
-                progress = { download.fraction },
+                progress = { fraction },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp)),
-                color = MaterialTheme.colorScheme.primary,
+                color = if (paused) Gold else MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
         }
 
         Spacer(Modifier.height(8.dp))
 
-        val label = if (indeterminate) {
-            "${download.bytes.toReadableSize()} ডাউনলোড হচ্ছে…"
-        } else {
-            "${download.bytes.toReadableSize()} / ${download.total.toReadableSize()}  " +
-                "(${download.fraction.times(100).toInt().toBanglaDigits()}%)"
+        val label = when {
+            paused && total > 0L ->
+                "বিরতি দেওয়া হয়েছে — ${bytes.toReadableSize()} / ${total.toReadableSize()}"
+
+            paused -> "বিরতি দেওয়া হয়েছে"
+            indeterminate -> "${bytes.toReadableSize()} ডাউনলোড হচ্ছে…"
+            else ->
+                "${bytes.toReadableSize()} / ${total.toReadableSize()}  " +
+                    "(${fraction.times(100).toInt().toBanglaDigits()}%)"
         }
         Text(
             text = label,
@@ -201,14 +227,32 @@ private fun DownloadInProgress(
 
         Spacer(Modifier.height(14.dp))
 
-        OutlinedButton(
-            onClick = onCancel,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(46.dp),
-            shape = RoundedCornerShape(14.dp),
-        ) {
-            Text("বাতিল করুন")
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(
+                onClick = if (paused) onResume else onPause,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(46.dp),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Icon(
+                    imageVector = if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(if (paused) "চালিয়ে যান" else "বিরতি দিন")
+            }
+
+            OutlinedButton(
+                onClick = onCancel,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(46.dp),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Text("বাতিল করুন")
+            }
         }
     }
 }
@@ -227,6 +271,13 @@ private fun DownloadActions(
                 text = download.message,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
+            )
+            Spacer(Modifier.height(10.dp))
+        } else if (download is DownloadStatus.Cancelled && !state.isDownloaded) {
+            Text(
+                text = "ডাউনলোড বাতিল হয়েছে",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(10.dp))
         }

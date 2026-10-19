@@ -34,4 +34,23 @@ object AppConstants {
 
     /** Base path of the per-surah recitation CDN. */
     const val AUDIO_BASE_URL = "https://cdn.islamic.network/quran/audio-surah/128"
+
+    /** Uthmani Arabic text, one entry per ayah. Used by the offline Sobok checker. */
+    const val QURAN_TEXT_ASSET = "quran_uthmani.json"
+
+    /**
+     * Optional Whisper model for the Sobok feature (~78 MB). Never bundled in the
+     * APK — downloaded on first use and kept in `filesDir`.
+     */
+    const val SOBOK_MODEL_URL =
+        "https://huggingface.co/sadrapp/whisper-base-ar-quran-ggml/resolve/main/ggml-model-q8_0.bin"
+
+    const val SOBOK_MODEL_DIR = "models"
+    const val SOBOK_MODEL_FILE = "ggml-model-q8_0.bin"
+
+    /**
+     * Server-reported size is 81,768,585 bytes. Anything smaller than this floor
+     * is treated as a truncated/corrupt download and rejected.
+     */
+    const val SOBOK_MODEL_MIN_BYTES = 75L * 1024L * 1024L
 }

@@ -94,6 +94,9 @@ class AudioRepository @Inject constructor(
         )
     }
 
+    fun pauseDownload(reciter: Reciter, surahNumber: Int) =
+        downloadManager.pause(key(reciter, surahNumber))
+
     fun cancelDownload(reciter: Reciter, surahNumber: Int) =
         downloadManager.cancel(key(reciter, surahNumber))
 
@@ -139,6 +142,9 @@ class AudioRepository @Inject constructor(
                         is DownloadStatus.Completed,
                         is DownloadStatus.Failed,
                         is DownloadStatus.Cancelled,
+                        // A paused item ends its turn; the next batch run resumes
+                        // it from the .part file.
+                        is DownloadStatus.Paused,
                         -> true
 
                         else -> false
@@ -158,6 +164,18 @@ class AudioRepository @Inject constructor(
         batchJob?.cancel()
         batchJob = null
         _batch.value = BatchProgress()
+    }
+
+    /**
+     * Stops the batch without losing the current file: [downloadAll] resumes the
+     * in-flight `.part` and skips everything already on disk.
+     */
+    fun pauseDownloadAll() {
+        activeKey?.let { downloadManager.pause(it) }
+        activeKey = null
+        batchJob?.cancel()
+        batchJob = null
+        _batch.value = _batch.value.copy(running = false)
     }
 
     /**
