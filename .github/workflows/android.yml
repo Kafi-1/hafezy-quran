@@ -48,6 +48,21 @@ jobs:
       - name: Build debug APK
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 
+      # The runner generates ~/.android/debug.keystore on the first debug build.
+      # Firebase Google Sign-In needs this fingerprint registered for the app.
+      - name: Print debug signing SHA-1
+        if: always()
+        run: |
+          if [ -f "$HOME/.android/debug.keystore" ]; then
+            keytool -list -v \
+              -keystore "$HOME/.android/debug.keystore" \
+              -alias androiddebugkey \
+              -storepass android -keypass android \
+              | grep -E "SHA1:|SHA-1:|SHA256:"
+          else
+            echo "debug.keystore not found"
+          fi
+
       - name: Upload APK artifact
         if: success()
         uses: actions/upload-artifact@v4
