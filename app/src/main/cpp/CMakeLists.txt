@@ -25,6 +25,27 @@ set(GGML_ALL_WARNINGS OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(whisper.cpp)
 
+# ---------------------------------------------------------------------------
+# Force optimization on the inference hot paths.
+#
+# The Android Gradle Plugin ties CMAKE_BUILD_TYPE to the Gradle build type, so a
+# plain `debug` build compiles whisper.cpp/ggml with -O0. On device that turns a
+# 12 s clip into minutes of CPU inference. target_compile_options are appended
+# *after* the per-config flags on the compiler command line, so -O3 here wins
+# over the debug -O0 while leaving Release builds (already optimized) unchanged.
+#
+# Deliberately NOT adding -march=armv8.2-a+dotprod+fp16: those are optional arm64
+# features and forcing them can SIGILL on older phones. ggml only emits those
+# kernels when the compiler defines __ARM_FEATURE_DOTPROD /
+# __ARM_FEATURE_FP16_VECTOR_ARITHMETIC, which requires an ARCH flag or the
+# GGML_CPU_ALL_VARIANTS path -- revisit later with real-device testing.
+# ---------------------------------------------------------------------------
+foreach (sobok_optimized whisper ggml ggml-base ggml-cpu)
+    if (TARGET ${sobok_optimized})
+        target_compile_options(${sobok_optimized} PRIVATE -O3)
+    endif()
+endforeach()
+
 add_library(sobok SHARED whisper_jni.cpp)
 
 target_include_directories(sobok PRIVATE

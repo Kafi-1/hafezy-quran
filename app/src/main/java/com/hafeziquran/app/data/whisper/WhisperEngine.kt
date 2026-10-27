@@ -1,5 +1,7 @@
 package com.hafeziquran.app.data.whisper
 
+import android.os.SystemClock
+import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -20,8 +22,16 @@ class WhisperEngine @Inject constructor() {
 
     private val mutex = Mutex()
 
+    @Volatile
     private var contextPtr: Long = 0L
+
+    @Volatile
     private var loadedPath: String? = null
+
+    /** Wall-clock cost of the most recent model load; 0 until a load happens. */
+    @Volatile
+    var lastLoadTimeMs: Long = 0L
+        private set
 
     suspend fun transcribe(modelPath: String, samples: FloatArray): Result<String> =
         withContext(Dispatchers.Default) {
@@ -42,6 +52,29 @@ class WhisperEngine @Inject constructor() {
             }
         }
 
+    /** True once a model context is resident; used by the recitation screen UI. */
+    val isReady: Boolean
+        get() = contextPtr != 0L
+
+    /**
+     * Loads the model ahead of the first segment so recording never waits for the
+     * ~1 s file parse on a cold start. Idempotent for the same path.
+     */
+    suspend fun preload(modelPath: String): Result<Unit> =
+        withContext(Dispatchers.Default) {
+            mutex.withLock {
+                try {
+                    check(WhisperBridge.isAvailable) { "Whisper native library unavailable" }
+                    ensureLoaded(modelPath)
+                    Result.success(Unit)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (throwable: Throwable) {
+                    Result.failure(throwable)
+                }
+            }
+        }
+
     suspend fun release() {
         mutex.withLock { releaseLocked() }
     }
@@ -49,10 +82,13 @@ class WhisperEngine @Inject constructor() {
     private fun ensureLoaded(path: String) {
         if (contextPtr != 0L && loadedPath == path) return
         releaseLocked()
+        val startedAt = SystemClock.elapsedRealtime()
         val created = WhisperBridge.initContext(path)
         check(created != 0L) { "Could not load Whisper model" }
         contextPtr = created
         loadedPath = path
+        lastLoadTimeMs = SystemClock.elapsedRealtime() - startedAt
+        Log.i(TAG, "model loaded in ${lastLoadTimeMs}ms: $path")
     }
 
     private fun releaseLocked() {
@@ -65,5 +101,6 @@ class WhisperEngine @Inject constructor() {
 
     private companion object {
         const val LANGUAGE = "ar"
+        const val TAG = "LIVE_SOBOK_MODEL"
     }
 }

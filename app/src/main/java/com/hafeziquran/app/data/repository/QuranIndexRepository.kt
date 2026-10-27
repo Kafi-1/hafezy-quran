@@ -69,4 +69,11 @@ class QuranIndexRepository @Inject constructor(
      */
     fun resolvePage(rawPage: Int): Int =
         (rawPage + pageOffset).coerceIn(1, AppConstants.PHYSICAL_PAGE_COUNT)
+
+    /**
+     * The inverse of [resolvePage]: a physical PDF page back to its index page.
+     * The front matter pages clamp to 1 so the text viewer always has content.
+     */
+    fun toMadaniPage(physicalPage: Int): Int =
+        (physicalPage - pageOffset).coerceIn(1, AppConstants.MADANI_PAGE_COUNT)
 }

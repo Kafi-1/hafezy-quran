@@ -47,7 +47,9 @@ fun normalizeArabicWord(word: String): String {
         .replace('\u0629', '\u0647') // ta marbuta -> heh
         .replace("\u0621", "") // standalone hamza
         .replace('\u06CC', '\u064A') // Farsi yeh
+        .replace('\u06D2', '\u064A') // yeh barree (Urdu) -> yeh
         .replace('\u06A9', '\u0643') // keheh
+        .replace('\u06BE', '\u0647') // heh doachashmee -> heh
     return normalized.filter { it in '\u0621'..'\u064A' }
 }
 
@@ -149,9 +151,15 @@ fun alignAyah(
 
 private fun wordsMatch(a: String, b: String): Boolean {
     if (a == b) return true
+    return normalizedWordSimilarity(a, b) >= SIMILARITY_THRESHOLD
+}
+
+/** 0..1 character similarity between two already-normalised Arabic words. */
+fun normalizedWordSimilarity(a: String, b: String): Float {
+    if (a == b) return 1f
     val maxLength = maxOf(a.length, b.length)
-    if (maxLength == 0) return true
-    return 1.0 - levenshtein(a, b).toDouble() / maxLength >= SIMILARITY_THRESHOLD
+    if (maxLength == 0) return 1f
+    return 1f - levenshtein(a, b).toFloat() / maxLength
 }
 
 private fun levenshtein(a: String, b: String): Int {

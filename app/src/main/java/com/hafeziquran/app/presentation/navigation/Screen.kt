@@ -69,6 +69,18 @@ sealed class Screen(val route: String) {
     /** Offline tilawat checker (record → Whisper → word highlights). */
     data object Sobok : Screen("sobok")
 
+    /**
+     * Live ayah-by-ayah recitation checker. Pass a physical PDF page to start
+     * there; omit it to resume the last read page.
+     */
+    data object Recitation : Screen("recitation?$READER_ARG_PAGE={$READER_ARG_PAGE}") {
+        const val ARG_PAGE = READER_ARG_PAGE
+        const val NO_PAGE = READER_NO_PAGE
+
+        fun createRoute(page: Int? = null): String =
+            "recitation?$ARG_PAGE=${page ?: NO_PAGE}"
+    }
+
     /** Firestore-backed video catalogue; open to guests as well. */
     data object Videos : Screen("videos")
 

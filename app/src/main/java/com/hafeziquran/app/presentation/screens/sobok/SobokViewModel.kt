@@ -102,6 +102,10 @@ class SobokViewModel @Inject constructor(
                             )
                         }
                     }
+                    if (snapshot.downloaded) {
+                        // Reclaim the superseded base model once tiny is valid.
+                        modelRepository.cleanupLegacyModel()
+                    }
                 }
         }
     }

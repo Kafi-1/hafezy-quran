@@ -12,6 +12,12 @@ object AppConstants {
     /** Path (inside `assets/`) of the surah/para page index. */
     const val QURAN_INDEX_ASSET = "quran_index.json"
 
+    /** Path (inside `assets/`) of the Madani page → ayah reference index. */
+    const val QURAN_PAGES_ASSET = "quran_pages.json"
+
+    /** Standard Madani page count (the text page index ignores the PDF offset). */
+    const val MADANI_PAGE_COUNT = 604
+
     /** Path (inside `assets/`) of the 114-surah audio catalogue. */
     const val SURAHS_JSON_ASSET = "surahs.json"
 
@@ -39,18 +45,28 @@ object AppConstants {
     const val QURAN_TEXT_ASSET = "quran_uthmani.json"
 
     /**
-     * Optional Whisper model for the Sobok feature (~78 MB). Never bundled in the
-     * APK — downloaded on first use and kept in `filesDir`.
+     * Optional Whisper model for the Sobok feature. Never bundled in the APK —
+     * downloaded on first use and kept in `filesDir`.
+     *
+     * The tiny multilingual model (~75 MB) replaces the older base model: it is
+     * several times faster on-device while still supporting Arabic via
+     * `language = "ar"`.
      */
     const val SOBOK_MODEL_URL =
-        "https://huggingface.co/sadrapp/whisper-base-ar-quran-ggml/resolve/main/ggml-model-q8_0.bin"
+        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"
 
     const val SOBOK_MODEL_DIR = "models"
-    const val SOBOK_MODEL_FILE = "ggml-model-q8_0.bin"
+    const val SOBOK_MODEL_FILE = "ggml-tiny.bin"
+
+    /** Previous base model file name; deleted once the tiny model is validated. */
+    const val SOBOK_LEGACY_MODEL_FILE = "ggml-model-q8_0.bin"
 
     /**
-     * Server-reported size is 81,768,585 bytes. Anything smaller than this floor
-     * is treated as a truncated/corrupt download and rejected.
+     * Lower bound for `ggml-tiny.bin` (~75 MB). Keep this close to the real size:
+     * the GGML magic-byte check only inspects the first four bytes, so it cannot
+     * detect a stream that ends early — the size floor is the only guard against a
+     * truncated download. A loose fraction (e.g. 38 MB) would let a half-written
+     * file through, and whisper.cpp would then fail to load it at runtime.
      */
-    const val SOBOK_MODEL_MIN_BYTES = 75L * 1024L * 1024L
+    const val SOBOK_MODEL_MIN_BYTES = 70L * 1024L * 1024L
 }

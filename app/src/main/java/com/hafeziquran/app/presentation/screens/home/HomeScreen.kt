@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.FormatListNumbered
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Search
@@ -91,6 +92,7 @@ fun HomeScreen(
     onBanglaQuran: () -> Unit,
     onAudioQuran: () -> Unit,
     onSobok: () -> Unit,
+    onRecitation: () -> Unit,
     onVideos: () -> Unit,
     onSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -152,6 +154,7 @@ fun HomeScreen(
                     onBanglaQuran = onBanglaQuran,
                     onAudioQuran = onAudioQuran,
                     onSobok = onSobok,
+                    onRecitation = onRecitation,
                     onVideos = onVideos,
                     modifier = Modifier.padding(horizontal = spacing.md),
                 )
@@ -460,6 +463,7 @@ private fun FeatureGrid(
     onBanglaQuran: () -> Unit,
     onAudioQuran: () -> Unit,
     onSobok: () -> Unit,
+    onRecitation: () -> Unit,
     onVideos: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -470,6 +474,7 @@ private fun FeatureGrid(
         FeatureItem("বাংলা কোরআন", "বাংলা অনুবাদ", Icons.Outlined.Translate, onBanglaQuran),
         FeatureItem("অডিও কোরআন", "তিলাওয়াত শুনুন", Icons.Outlined.Headphones, onAudioQuran),
         FeatureItem("সবক", "তেলাওয়াত যাচাই (অফলাইন)", Icons.Outlined.RecordVoiceOver, onSobok),
+        FeatureItem("লাইভ সবক", "পৃষ্ঠা ধরে ধরে যাচাই", Icons.Outlined.Mic, onRecitation),
         FeatureItem("ভিডিও", "ইসলামিক ভিডিও দেখুন", Icons.Outlined.PlayCircleOutline, onVideos),
         FeatureItem(
             "সর্বশেষ",

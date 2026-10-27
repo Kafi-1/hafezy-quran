@@ -70,6 +70,13 @@ android {
         debug {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("debug")
+            externalNativeBuild {
+                cmake {
+                    // Optimize the native whisper/ggml code even in debug so it is
+                    // usable for on-device testing (symbols kept, unlike Release).
+                    arguments += "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
+                }
+            }
         }
         release {
             isMinifyEnabled = true
@@ -78,6 +85,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            externalNativeBuild {
+                cmake {
+                    // Fully optimized native build for shipping.
+                    arguments += "-DCMAKE_BUILD_TYPE=Release"
+                }
+            }
             // Signed with the release key when available, else the debug key so the
             // APK is still installable for local smoke-testing.
             signingConfig = if (hasReleaseKeystore) {

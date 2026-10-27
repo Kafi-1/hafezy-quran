@@ -34,6 +34,7 @@ import com.hafeziquran.app.presentation.screens.info.InfoScreen
 import com.hafeziquran.app.presentation.screens.info.InfoSection
 import com.hafeziquran.app.presentation.screens.para.ParaListScreen
 import com.hafeziquran.app.presentation.screens.reader.ReaderScreen
+import com.hafeziquran.app.presentation.screens.recitation.RecitationScreen
 import com.hafeziquran.app.presentation.screens.search.SearchScreen
 import com.hafeziquran.app.presentation.screens.settings.SettingsScreen
 import com.hafeziquran.app.presentation.screens.sobok.SobokScreen
@@ -126,6 +127,7 @@ fun HafeziNavHost() {
                     onBanglaQuran = { navController.navigate(Screen.BanglaQuran.route) },
                     onAudioQuran = { navController.navigate(Screen.AudioQuran.route) },
                     onSobok = { navController.navigate(Screen.Sobok.route) },
+                    onRecitation = { navController.navigate(Screen.Recitation.createRoute()) },
                     onVideos = { navController.navigate(Screen.Videos.route) },
                     onSettings = { navController.navigate(Screen.Settings.route) },
                 )
@@ -200,6 +202,20 @@ fun HafeziNavHost() {
 
             composable(Screen.Sobok.route) {
                 SobokScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(
+                route = Screen.Recitation.route,
+                arguments = listOf(
+                    navArgument(Screen.Recitation.ARG_PAGE) {
+                        type = NavType.IntType
+                        defaultValue = Screen.Recitation.NO_PAGE
+                    },
+                ),
+            ) {
+                // The page argument is read by RecitationViewModel from
+                // SavedStateHandle, so the screen needs no navigation knowledge.
+                RecitationScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Screen.Videos.route) {
