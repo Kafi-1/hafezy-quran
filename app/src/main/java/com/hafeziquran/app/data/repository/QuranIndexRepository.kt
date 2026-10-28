@@ -63,17 +63,31 @@ class QuranIndexRepository @Inject constructor(
     }
 
     /**
-     * Converts a Madani index page into a 1-based page number for the bundled PDF.
-     * Clamped to the document's real page range so a bad index entry can never ask
-     * the reader for a page that does not exist.
+     * Converts a stored index page into a 1-based page number for the bundled PDF.
+     * Pages are already physical, so with `pageOffset` at 0 this is the identity;
+     * the offset is kept as a global nudge. Clamped to the document's real page
+     * range so a bad index entry can never ask the reader for a page that does not
+     * exist.
      */
     fun resolvePage(rawPage: Int): Int =
         (rawPage + pageOffset).coerceIn(1, AppConstants.PHYSICAL_PAGE_COUNT)
 
     /**
-     * The inverse of [resolvePage]: a physical PDF page back to its index page.
-     * The front matter pages clamp to 1 so the text viewer always has content.
+     * Maps a physical PDF page back to its standard Madani page for the
+     * recitation's ayah lookup.
+     *
+     * There is no single offset to invert: the scan's pagination drifts away from
+     * Madani as the mushaf progresses. We anchor on the surah that contains
+     * [physicalPage] and carry its Madani start page forward, which is exact while
+     * the scan keeps a surah's page spacing and at worst a page or two off inside
+     * the few surahs it reflows. Front matter clamps to 1 so the text always has
+     * content.
      */
-    fun toMadaniPage(physicalPage: Int): Int =
-        (physicalPage - pageOffset).coerceIn(1, AppConstants.MADANI_PAGE_COUNT)
+    fun toMadaniPage(physicalPage: Int): Int {
+        val surahs = (_index.value as? Resource.Success)?.data?.surahs.orEmpty()
+        val anchor = surahs.lastOrNull { it.page <= physicalPage }
+            ?: return physicalPage.coerceIn(1, AppConstants.MADANI_PAGE_COUNT)
+        return (anchor.madaniPage + (physicalPage - anchor.page))
+            .coerceIn(1, AppConstants.MADANI_PAGE_COUNT)
+    }
 }

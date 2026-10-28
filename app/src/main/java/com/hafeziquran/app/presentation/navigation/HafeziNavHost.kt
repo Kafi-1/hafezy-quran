@@ -21,10 +21,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hafeziquran.app.core.constants.AppConstants
+import com.hafeziquran.app.data.model.BookType
 import com.hafeziquran.app.presentation.components.BottomNavBar
 import com.hafeziquran.app.presentation.components.TabRoute
 import com.hafeziquran.app.presentation.screens.audioquran.AudioQuranScreen
 import com.hafeziquran.app.presentation.screens.auth.AuthScreen
+import com.hafeziquran.app.presentation.screens.books.BookViewerScreen
 import com.hafeziquran.app.presentation.screens.books.IslamicBooksScreen
 import com.hafeziquran.app.presentation.screens.banglaquran.BanglaQuranScreen
 import com.hafeziquran.app.presentation.screens.banglaquran.BanglaQuranViewerScreen
@@ -142,14 +144,28 @@ fun HafeziNavHost() {
             composable(Screen.IslamicBooks.route) {
                 IslamicBooksScreen(
                     onOpenBook = { book ->
-                        // Only the bundled mushaf is readable today. Every other
-                        // catalogue entry has no PDF in assets yet and is shown
-                        // disabled in the list, so it can never reach this point.
-                        if (book.asset == AppConstants.QURAN_PDF_ASSET) {
-                            navController.openReader()
+                        when {
+                            // The bundled mushaf opens in the full reader.
+                            book.type == BookType.LOCAL &&
+                                book.asset == AppConstants.QURAN_PDF_ASSET ->
+                                navController.openReader()
+
+                            // A downloaded book opens in its own PDF viewer.
+                            book.type == BookType.DOWNLOAD ->
+                                navController.navigate(Screen.BookViewer.createRoute(book.id))
                         }
                     },
                 )
+            }
+
+            composable(
+                route = Screen.BookViewer.route,
+                arguments = listOf(
+                    navArgument(Screen.BookViewer.ARG_BOOK_ID) { type = NavType.StringType },
+                ),
+            ) {
+                // The id is read by BookViewerViewModel from SavedStateHandle.
+                BookViewerScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Screen.Tasbeeh.route) {

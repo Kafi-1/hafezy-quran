@@ -115,6 +115,35 @@ class UserPreferences @Inject constructor(
 
     suspend fun setBanglaLastPage(page: Int) = edit(Keys.BANGLA_LAST_PAGE, page)
 
+    // Per-book reading state for the downloadable "ইসলামিক বুক" entries. The key
+    // name carries the book id, so every book gets its own page/bookmark space
+    // without a schema change (DataStore accepts dynamic keys with no migration).
+
+    private fun bookLastPageKey(id: String) = intPreferencesKey("book_last_page_$id")
+
+    private fun bookBookmarksKey(id: String) = stringSetPreferencesKey("book_bookmarks_$id")
+
+    /** Last page read in book [id] (1-based). */
+    fun bookLastPage(id: String): Flow<Int> = context.settingsDataStore.data.map { prefs ->
+        prefs[bookLastPageKey(id)] ?: 1
+    }
+
+    /** Pages bookmarked in book [id] (1-based). */
+    fun bookBookmarks(id: String): Flow<Set<Int>> = context.settingsDataStore.data.map { prefs ->
+        prefs[bookBookmarksKey(id)].orEmpty().mapNotNull { it.toIntOrNull() }.toSet()
+    }
+
+    suspend fun setBookLastPage(id: String, page: Int) = edit(bookLastPageKey(id), page)
+
+    suspend fun toggleBookBookmark(id: String, page: Int) {
+        context.settingsDataStore.edit { prefs ->
+            val key = bookBookmarksKey(id)
+            val current = prefs[key].orEmpty()
+            val pageKey = page.toString()
+            prefs[key] = if (pageKey in current) current - pageKey else current + pageKey
+        }
+    }
+
     suspend fun setThemeMode(mode: ThemeMode) = edit(Keys.THEME_MODE, mode.name)
 
     suspend fun setColorThemeName(name: String) = edit(Keys.COLOR_THEME, name)

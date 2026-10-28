@@ -15,7 +15,7 @@ object AppConstants {
     /** Path (inside `assets/`) of the Madani page → ayah reference index. */
     const val QURAN_PAGES_ASSET = "quran_pages.json"
 
-    /** Standard Madani page count (the text page index ignores the PDF offset). */
+    /** Standard Madani page count. Clamps the physical→Madani reverse mapping. */
     const val MADANI_PAGE_COUNT = 604
 
     /** Path (inside `assets/`) of the 114-surah audio catalogue. */
@@ -26,9 +26,10 @@ object AppConstants {
 
     /**
      * Physical page count of the bundled `quran.pdf`. The single source of truth
-     * for clamping: `quran_index.json` stores standard 604-page Madani numbers and
-     * [com.hafeziquran.app.data.repository.QuranIndexRepository.resolvePage] shifts
-     * them by `pageOffset` (currently 8) so they land on this 612-page scan.
+     * for clamping: `quran_index.json` stores physical page numbers directly (the
+     * scan's pagination drifts from the 604-page Madani index), so
+     * [com.hafeziquran.app.data.repository.QuranIndexRepository.resolvePage]
+     * applies only the global `pageOffset` nudge (currently 0).
      */
     const val PHYSICAL_PAGE_COUNT = 612
 

@@ -6,9 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hafeziquran.app.core.util.Resource
 import com.hafeziquran.app.data.pdf.PdfFileRenderer
-import com.hafeziquran.app.data.pdf.TocEntry
 import com.hafeziquran.app.data.preferences.UserPreferences
 import com.hafeziquran.app.data.repository.BanglaQuranRepository
+import com.hafeziquran.app.presentation.screens.pdfviewer.PdfFileViewer
+import com.hafeziquran.app.presentation.screens.pdfviewer.PdfFileViewerState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.legere.pdfiumandroid.PdfiumCore
 import kotlinx.coroutines.CancellationException
@@ -25,37 +26,22 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-data class BanglaQuranViewerUiState(
-    val isLoading: Boolean = true,
-    val pageCount: Int = 0,
-    val currentPage: Int = 1,
-    val isBookmarked: Boolean = false,
-    val nightMode: Boolean = false,
-    val pageAspectRatio: Float = 1.45f,
-    /** Flattened PDF outline; empty when the file carries no bookmarks. */
-    val toc: List<TocEntry> = emptyList(),
-    val errorMessage: String? = null,
-    /** One-shot scroll request; cleared once the pager has moved. */
-    val jumpRequest: Int? = null,
-) {
-    val isReady: Boolean get() = !isLoading && errorMessage == null && pageCount > 0
-}
-
 /**
- * Viewer for the downloaded Bangla translation. Mirrors [com.hafeziquran.app.presentation.screens.reader.ReaderViewModel]
- * but drives a [PdfFileRenderer] over the user's own file instead of the bundled
- * asset, and keeps its bookmarks/last-page in DataStore so they never collide
- * with the mushaf reader's page numbers.
+ * Viewer for the downloaded Bangla translation. Mirrors
+ * [com.hafeziquran.app.presentation.screens.reader.ReaderViewModel] but drives a
+ * [PdfFileRenderer] over the user's own file instead of the bundled asset, and
+ * keeps its bookmarks/last-page in DataStore so they never collide with the
+ * mushaf reader's page numbers.
  */
 @HiltViewModel
 class BanglaQuranViewerViewModel @Inject constructor(
     private val repository: BanglaQuranRepository,
     private val pdfiumCore: PdfiumCore,
     private val preferences: UserPreferences,
-) : ViewModel() {
+) : ViewModel(), PdfFileViewer {
 
-    private val _uiState = MutableStateFlow(BanglaQuranViewerUiState())
-    val uiState: StateFlow<BanglaQuranViewerUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(PdfFileViewerState())
+    override val uiState: StateFlow<PdfFileViewerState> = _uiState.asStateFlow()
 
     private val currentPage = MutableStateFlow(1)
 
@@ -128,7 +114,7 @@ class BanglaQuranViewerViewModel @Inject constructor(
     }
 
     /** Never throws: a bad index or a dead Pdfium handle becomes a Bangla error. */
-    suspend fun renderPage(pageIndex: Int, widthPx: Int): Resource<Bitmap> = try {
+    override suspend fun renderPage(pageIndex: Int, widthPx: Int): Resource<Bitmap> = try {
         val current = renderer ?: error("Renderer not ready")
         Resource.Success(withContext(Dispatchers.IO) { current.renderPage(pageIndex, widthPx) })
     } catch (cancellation: CancellationException) {
@@ -138,7 +124,7 @@ class BanglaQuranViewerViewModel @Inject constructor(
         Resource.Error(throwable, "পৃষ্ঠা লোড করা যায়নি")
     }
 
-    fun prefetchNeighbours(page: Int, widthPx: Int) {
+    override fun prefetchNeighbours(page: Int, widthPx: Int) {
         val current = renderer ?: return
         val index = page - 1
         viewModelScope.launch {
@@ -147,23 +133,23 @@ class BanglaQuranViewerViewModel @Inject constructor(
         }
     }
 
-    fun onPageSettled(page: Int) {
+    override fun onPageSettled(page: Int) {
         if (currentPage.value == page) return
         currentPage.value = page
         _uiState.update { it.copy(currentPage = page) }
         viewModelScope.launch { preferences.setBanglaLastPage(page) }
     }
 
-    fun toggleBookmark() {
+    override fun toggleBookmark() {
         val page = currentPage.value
         viewModelScope.launch { preferences.toggleBanglaBookmark(page) }
     }
 
-    fun setNightMode(enabled: Boolean) {
+    override fun setNightMode(enabled: Boolean) {
         viewModelScope.launch { preferences.setReaderNightMode(enabled) }
     }
 
-    fun requestJump(page: Int) {
+    override fun requestJump(page: Int) {
         _uiState.update { state ->
             if (state.pageCount <= 0) {
                 state
@@ -173,11 +159,11 @@ class BanglaQuranViewerViewModel @Inject constructor(
         }
     }
 
-    fun consumeJumpRequest() {
+    override fun consumeJumpRequest() {
         _uiState.update { it.copy(jumpRequest = null) }
     }
 
-    fun retry() = openDocument()
+    override fun retry() = openDocument()
 
     override fun onCleared() {
         renderer?.close()

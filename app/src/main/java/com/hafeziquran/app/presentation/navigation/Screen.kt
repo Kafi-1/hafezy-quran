@@ -32,6 +32,13 @@ sealed class Screen(val route: String) {
     /** The "ইসলামিক বুক" tab. */
     data object IslamicBooks : Screen("islamic_books")
 
+    /** Full-screen viewer for a downloaded "ইসলামিক বুক" entry. */
+    data object BookViewer : Screen("book_viewer/{bookId}") {
+        const val ARG_BOOK_ID = "bookId"
+
+        fun createRoute(bookId: String): String = "book_viewer/$bookId"
+    }
+
     data object Tasbeeh : Screen("tasbeeh")
 
     // --- Full-screen destinations (bar hidden) ---

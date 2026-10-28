@@ -29,6 +29,7 @@ fun TabScaffold(
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
+    snackbarHost: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
     Scaffold(
@@ -47,6 +48,7 @@ fun TabScaffold(
             )
         },
         floatingActionButton = floatingActionButton,
+        snackbarHost = snackbarHost,
         content = content,
     )
 }

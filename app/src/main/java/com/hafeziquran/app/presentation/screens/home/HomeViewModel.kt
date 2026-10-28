@@ -154,11 +154,12 @@ class HomeViewModel @Inject constructor(
     private companion object {
         /**
          * The shortcut strip. `pageOverride` exists for আয়াতুল কুরসি, which is a
-         * single ayah inside আল-বাকারা rather than a surah of its own.
+         * single ayah inside আল-বাকারা rather than a surah of its own. It is a
+         * *physical* PDF page, the same units as [Surah.page].
          */
         val FEATURED_SURAHS: List<Triple<String, Int, Int?>> = listOf(
             Triple("সূরা ইয়াসীন", 36, null),
-            Triple("আয়াতুল কুরসি", 2, 42),
+            Triple("আয়াতুল কুরসি", 2, 43),
             Triple("সূরা কাহাফ", 18, null),
             Triple("সূরা আর-রহমান", 55, null),
             Triple("সূরা ওয়াকিয়া", 56, null),
