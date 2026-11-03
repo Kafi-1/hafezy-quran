@@ -1,7 +1,5 @@
 package com.hafeziquran.app.presentation.screens.splash
 
-import android.animation.AccelerateDecelerateInterpolator
-import android.animation.AccelerateInterpolator
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.AnimatorSet
@@ -17,6 +15,8 @@ import android.graphics.Shader
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.TextView
