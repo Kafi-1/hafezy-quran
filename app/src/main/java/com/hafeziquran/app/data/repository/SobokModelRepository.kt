@@ -17,8 +17,9 @@ import javax.inject.Singleton
  * Owns the optional Whisper model for Sobok: its private-storage file, download,
  * validation, and deletion (which also frees the loaded native context).
  *
- * Nothing is bundled in the APK — the ~75 MB `ggml-tiny.bin` file is fetched only
- * when the user first opens the feature and can be deleted again from Settings.
+ * Nothing is bundled in the APK — the ~42 MB `ggml-tiny-q8_0.bin` file is fetched
+ * only when the user first opens the feature and can be deleted again from
+ * Settings.
  */
 @Singleton
 class SobokModelRepository @Inject constructor(
@@ -29,14 +30,15 @@ class SobokModelRepository @Inject constructor(
     private val modelsDir: File = File(context.filesDir, AppConstants.SOBOK_MODEL_DIR)
     val file: File = File(modelsDir, AppConstants.SOBOK_MODEL_FILE)
 
-    /** Previous base model (`ggml-model-q8_0.bin`), superseded by the tiny model. */
-    private val legacyFile: File = File(modelsDir, AppConstants.SOBOK_LEGACY_MODEL_FILE)
+    /** Models superseded by the current one (old f16 tiny + old base). */
+    private val legacyFiles: List<File> =
+        AppConstants.SOBOK_LEGACY_MODEL_FILES.map { File(modelsDir, it) }
 
     init {
         modelsDir.mkdirs()
         // A valid file left from a previous session counts as downloaded.
         downloadManager.markCompletedIfPresent(KEY, file)
-        // If the tiny model is already in place, reclaim the old base model's disk.
+        // If the current model is already in place, reclaim the old files' disk.
         cleanupLegacyModel()
     }
 
@@ -71,14 +73,13 @@ class SobokModelRepository @Inject constructor(
     }
 
     /**
-     * Reclaims the disk used by the superseded base model — but only once the tiny
+     * Reclaims the disk used by superseded models — but only once the current
      * model is present and valid, so a half-finished migration never leaves the
      * user with no usable model. Safe to call repeatedly; idempotent.
      */
     fun cleanupLegacyModel() {
         if (!isDownloaded()) return
-        if (!legacyFile.exists()) return
-        runCatching { legacyFile.delete() }
+        legacyFiles.forEach { runCatching { it.delete() } }
     }
 
     /** Frees the native context first, then removes the model and partial file. */
@@ -86,7 +87,7 @@ class SobokModelRepository @Inject constructor(
         whisperEngine.release()
         runCatching { file.delete() }
         runCatching { partFile().delete() }
-        runCatching { legacyFile.delete() }
+        legacyFiles.forEach { runCatching { it.delete() } }
         downloadManager.reset(KEY)
     }
 

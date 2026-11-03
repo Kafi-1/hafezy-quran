@@ -78,7 +78,7 @@ import com.hafeziquran.app.presentation.theme.LocalSpacing
 
 /**
  * Landing screen: curved brand header, a continue-reading card with a live
- * thumbnail and progress, a strip of popular surahs, and a 2×3 service grid.
+ * thumbnail and progress, a strip of popular surahs, and a three-column service grid.
  */
 @Composable
 fun HomeScreen(
@@ -486,15 +486,15 @@ private fun FeatureGrid(
         FeatureItem("তাসবীহ", "ডিজিটাল কাউন্টার", Icons.Outlined.Spa, onTasbeeh),
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = modifier) {
-        items.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = modifier) {
+        items.chunked(COLUMNS).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { feature ->
                     FeatureCard(feature = feature, modifier = Modifier.weight(1f))
                 }
-                // An odd count leaves a half-width gap on the last row; a spacer
-                // keeps the lone card the same size as every other card.
-                if (row.size == 1) {
+                // A short last row keeps its cards the same width as the rest by
+                // padding the gap with invisible spacers.
+                repeat(COLUMNS - row.size) {
                     Spacer(Modifier.weight(1f))
                 }
             }
@@ -502,27 +502,30 @@ private fun FeatureGrid(
     }
 }
 
+/** Service cards per row. Three fits the eleven entries into four tidy rows. */
+private const val COLUMNS = 3
+
 @Composable
 private fun FeatureCard(feature: FeatureItem, modifier: Modifier = Modifier) {
     val spacing = LocalSpacing.current
 
     Card(
         onClick = feature.onClick,
-        modifier = modifier.height(120.dp),
-        shape = RoundedCornerShape(20.dp),
+        modifier = modifier.height(104.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(spacing.md),
+                .padding(spacing.sm),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(13.dp))
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(11.dp))
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
@@ -537,7 +540,7 @@ private fun FeatureCard(feature: FeatureItem, modifier: Modifier = Modifier) {
                     imageVector = feature.icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(19.dp),
                 )
             }
 
@@ -547,6 +550,8 @@ private fun FeatureCard(feature: FeatureItem, modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = feature.subtitle,

@@ -10,7 +10,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalView
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hafeziquran.app.data.preferences.ThemeMode
@@ -28,9 +27,6 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Must run before super.onCreate so the splash icon animates out of the
-        // window background rather than flashing.
-        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 

@@ -141,7 +141,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.splashscreen)
 
     // --- Compose (BOM keeps every artifact on the same version) ---
     implementation(platform(libs.androidx.compose.bom))

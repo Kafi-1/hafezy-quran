@@ -49,25 +49,30 @@ object AppConstants {
      * Optional Whisper model for the Sobok feature. Never bundled in the APK —
      * downloaded on first use and kept in `filesDir`.
      *
-     * The tiny multilingual model (~75 MB) replaces the older base model: it is
-     * several times faster on-device while still supporting Arabic via
-     * `language = "ar"`.
+     * The tiny multilingual model quantised to q8_0 (~42 MB) is used: it is
+     * several times faster and less than half the size of the older f16 tiny
+     * model, while still supporting Arabic via `language = "ar"`.
      */
     const val SOBOK_MODEL_URL =
-        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"
+        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q8_0.bin"
 
     const val SOBOK_MODEL_DIR = "models"
-    const val SOBOK_MODEL_FILE = "ggml-tiny.bin"
-
-    /** Previous base model file name; deleted once the tiny model is validated. */
-    const val SOBOK_LEGACY_MODEL_FILE = "ggml-model-q8_0.bin"
+    const val SOBOK_MODEL_FILE = "ggml-tiny-q8_0.bin"
 
     /**
-     * Lower bound for `ggml-tiny.bin` (~75 MB). Keep this close to the real size:
-     * the GGML magic-byte check only inspects the first four bytes, so it cannot
-     * detect a stream that ends early — the size floor is the only guard against a
-     * truncated download. A loose fraction (e.g. 38 MB) would let a half-written
-     * file through, and whisper.cpp would then fail to load it at runtime.
+     * Superseded model files, deleted once the q8_0 tiny model is validated:
+     * the old f16 tiny model, and the even older base model. A user who has one
+     * of these sees Sobok ask for a (much smaller) re-download — the new file has
+     * a different name, so the old one is never mistaken for the current model.
      */
-    const val SOBOK_MODEL_MIN_BYTES = 70L * 1024L * 1024L
+    val SOBOK_LEGACY_MODEL_FILES = listOf("ggml-tiny.bin", "ggml-model-q8_0.bin")
+
+    /**
+     * Lower bound for `ggml-tiny-q8_0.bin` (~42 MB, real size ~41.5 MiB). Keep this
+     * close to the real size: the GGML magic-byte check only inspects the first
+     * four bytes, so it cannot detect a stream that ends early — the size floor is
+     * the only guard against a truncated download. A loose fraction would let a
+     * half-written file through, and whisper.cpp would then fail to load it.
+     */
+    const val SOBOK_MODEL_MIN_BYTES = 40L * 1024L * 1024L
 }

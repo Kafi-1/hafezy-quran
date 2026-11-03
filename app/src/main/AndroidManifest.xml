@@ -31,17 +31,24 @@
         android:theme="@style/Theme.HafeziQuran"
         tools:targetApi="35">
 
+        <!-- First-launch welcome; the real entry point. Shows a one-off animation
+             then hands off to MainActivity. -->
         <activity
-            android:name=".MainActivity"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:name=".presentation.screens.splash.SplashActivity"
             android:exported="true"
-            android:theme="@style/Theme.HafeziQuran.Splash"
-            android:windowSoftInputMode="adjustResize">
+            android:theme="@style/Theme.HafeziQuran.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:exported="false"
+            android:theme="@style/Theme.HafeziQuran"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- Audio Quran playback. media3 owns the notification and lock-screen
              controls; the UI talks to it only via a MediaController. -->

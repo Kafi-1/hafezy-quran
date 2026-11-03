@@ -35,12 +35,22 @@ fun splitAyahWords(text: String): List<String> =
 /**
  * Strips diacritics, Quranic annotation signs and orthographic variants so that
  * `ٱلرَّحْمَٰنِ` and `الرحمن` normalise to the same word.
+ *
+ * The mushaf often writes a long /aa/ as a dagger alif (superscript alef,
+ * U+0670) on the preceding consonant instead of a full alef — `ٱلصِّرَٰطَ`,
+ * `قَٰلَ` — while Whisper emits the modern spelling with a full alef. A dagger
+ * alif is therefore folded to `ا`. The one exception is a dagger alif that only
+ * restates an alef or alef maqsura already present (`عَلَىٰ`, `إِلَىٰ`): there it
+ * adds no letter and is dropped, so `على` stays `علي` rather than drifting to
+ * `عليا`.
  */
 fun normalizeArabicWord(word: String): String {
     val normalized = java.text.Normalizer.normalize(word, java.text.Normalizer.Form.NFC)
         .replace(DIACRITICS, "")
         .replace(TATWEEL, "")
-        .replace(ALEF_VARIANTS, "\u0627")
+        .replace(ALEF_VARIANTS, "\u0627") // every alef variant -> plain alef
+        .replace(REDUNDANT_DAGGER_ALEF, "$1") // dagger alif over an alef/alef maqsura
+        .replace(DAGGER_ALEF, "\u0627") // bare dagger alif -> alef
         .replace('\u0649', '\u064A') // alef maqsura -> yeh
         .replace('\u0624', '\u0648') // waw with hamza -> waw
         .replace('\u0626', '\u064A') // yeh with hamza -> yeh
@@ -184,8 +194,21 @@ private fun levenshtein(a: String, b: String): Int {
     return previous[b.length]
 }
 
-private const val SIMILARITY_THRESHOLD = 0.7
+/**
+ * A word is accepted as correct at 0.6 character similarity. Whisper's output
+ * drops the mushaf's tashkeel and waqf marks, so after normalisation a correctly
+ * recited word can still differ by a letter or two — a stricter bar painted those
+ * green-flagged words red and made the checker feel wrong. 0.6 forgives that
+ * without letting genuinely different words match.
+ */
+private const val SIMILARITY_THRESHOLD = 0.6f
 
-private val DIACRITICS = Regex("[\\u0610-\\u061A\\u064B-\\u065F\\u0670\\u06D6-\\u06ED]")
+private val DIACRITICS = Regex("[\\u0610-\\u061A\\u064B-\\u065F\\u06D6-\\u06ED]")
 private val TATWEEL = Regex("\\u0640")
 private val ALEF_VARIANTS = Regex("[\\u0622\\u0623\\u0625\\u0671\\u0672\\u0673\\u0675]")
+
+/** Alef / alef maqsura immediately followed by a dagger alif that restates them. */
+private val REDUNDANT_DAGGER_ALEF = Regex("([\\u0627\\u0649])\\u0670")
+
+/** Dagger alif (superscript alef) that stands in for a full alef. */
+private val DAGGER_ALEF = Regex("\\u0670")
