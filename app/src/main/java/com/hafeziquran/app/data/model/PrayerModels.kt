@@ -41,7 +41,12 @@ data class HijriCalendarDay(
     val hijriMonthNumber: Int,
     val hijriMonthEnglish: String,
     val hijriYear: Int,
-)
+    /** Sehri end / iftar, present because the calendar endpoint also returns timings. */
+    val imsak: LocalTime? = null,
+    val maghrib: LocalTime? = null,
+) {
+    val isRamadan: Boolean get() = hijriMonthNumber == 9
+}
 
 /** A user-selected location, persisted after the one-time setup. */
 data class PrayerLocation(

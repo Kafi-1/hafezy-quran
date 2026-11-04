@@ -12,6 +12,9 @@
 
     <!-- Adhan alarms: exact delivery at prayer time and survival across reboot -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Exact-alarm capability without the per-app settings trip. This is an
+         alarm/reminder app; Play requires a declaration for this permission. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Digital Tasbeeh haptics -->
@@ -79,6 +82,12 @@
 
         <receiver
             android:name=".prayer.AdhanReceiver"
+            android:exported="false" />
+
+        <!-- Sehri/iftar reminders. Same exact-alarm mechanics as the adhan, but
+             delivered as a high-priority notification instead of audio. -->
+        <receiver
+            android:name=".prayer.RamadanAlarmReceiver"
             android:exported="false" />
 
         <!-- Rebuild adhan alarms after reboot, clock/timezone changes, or update. -->

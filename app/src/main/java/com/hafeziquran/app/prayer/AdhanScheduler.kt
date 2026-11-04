@@ -8,10 +8,12 @@ import android.os.Build
 import com.hafeziquran.app.data.model.PrayerDay
 import com.hafeziquran.app.data.model.PrayerName
 import com.hafeziquran.app.data.preferences.PrayerPreferences
-import com.hafeziquran.app.data.repository.PrayerTimesRepository
+import com.hafeziquran.app.data.preferences.PrayerSettingsSnapshot
+import com.hafeziquran.app.domain.repository.PrayerTimesRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -43,6 +45,7 @@ class AdhanScheduler @Inject constructor(
         val location = snapshot.location
         if (location == null) {
             PrayerName.entries.forEach(::cancel)
+            RamadanReminder.entries.forEach(::cancelReminder)
             return
         }
 
@@ -64,6 +67,8 @@ class AdhanScheduler @Inject constructor(
             // is already registered rather than dropping it.
             if (at != null) schedule(prayer, at)
         }
+
+        scheduleRamadanReminders(snapshot, now, todayDay, tomorrowDay)
     }
 
     /** Cancel a single prayer's pending alarm (used when its switch goes off). */
@@ -82,6 +87,66 @@ class AdhanScheduler @Inject constructor(
             // rather than not at all. The UI offers to grant the permission.
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, intent)
         }
+    }
+
+    private fun scheduleRamadanReminders(
+        snapshot: PrayerSettingsSnapshot,
+        now: LocalDateTime,
+        today: PrayerDay?,
+        tomorrow: PrayerDay?,
+    ) {
+        // Sehri ends at Imsak; iftar is Maghrib — both come straight from AlAdhan.
+        scheduleReminder(RamadanReminder.SEHRI, snapshot.sehriAlarmEnabled, now, today, tomorrow) {
+            it.imsak
+        }
+        scheduleReminder(RamadanReminder.IFTAR, snapshot.iftarAlarmEnabled, now, today, tomorrow) {
+            it.maghrib
+        }
+    }
+
+    private fun scheduleReminder(
+        type: RamadanReminder,
+        enabled: Boolean,
+        now: LocalDateTime,
+        today: PrayerDay?,
+        tomorrow: PrayerDay?,
+        timeOf: (PrayerDay) -> LocalTime?,
+    ) {
+        if (!enabled) {
+            cancelReminder(type)
+            return
+        }
+        val at = nextTime(now, today, tomorrow, timeOf) ?: return
+        val millis = at.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val intent = reminderIntent(type, PendingIntent.FLAG_UPDATE_CURRENT) ?: return
+        if (canScheduleExact()) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, intent)
+        } else {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, intent)
+        }
+    }
+
+    private fun cancelReminder(type: RamadanReminder) {
+        val intent = reminderIntent(type, PendingIntent.FLAG_NO_CREATE) ?: return
+        alarmManager.cancel(intent)
+    }
+
+    private fun nextTime(
+        now: LocalDateTime,
+        today: PrayerDay?,
+        tomorrow: PrayerDay?,
+        timeOf: (PrayerDay) -> LocalTime?,
+    ): LocalDateTime? {
+        today?.let { day ->
+            timeOf(day)?.let { time ->
+                val candidate = LocalDateTime.of(day.date, time)
+                if (candidate.isAfter(now.plusSeconds(30))) return candidate
+            }
+        }
+        tomorrow?.let { day ->
+            timeOf(day)?.let { return LocalDateTime.of(day.date, it) }
+        }
+        return null
     }
 
     private fun nextOccurrence(
@@ -116,7 +181,21 @@ class AdhanScheduler @Inject constructor(
         )
     }
 
+    private fun reminderIntent(type: RamadanReminder, flags: Int): PendingIntent? {
+        val intent = Intent(context, RamadanAlarmReceiver::class.java).apply {
+            action = RamadanAlarmReceiver.ACTION_REMINDER
+            putExtra(RamadanAlarmReceiver.EXTRA_TYPE, type.name)
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            REMINDER_REQUEST_BASE + type.ordinal,
+            intent,
+            flags or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
     private companion object {
         const val REQUEST_CODE_BASE = 1_100
+        const val REMINDER_REQUEST_BASE = 1_200
     }
 }

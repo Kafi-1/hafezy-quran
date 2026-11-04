@@ -56,6 +56,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,6 +79,7 @@ import com.hafeziquran.app.core.constants.District
 import com.hafeziquran.app.data.model.HijriCalendarDay
 import com.hafeziquran.app.data.model.PrayerDay
 import com.hafeziquran.app.data.model.PrayerName
+import com.hafeziquran.app.domain.calendar.IslamicEvents
 import com.hafeziquran.app.presentation.theme.Gold
 import com.hafeziquran.app.presentation.theme.LocalSpacing
 import java.time.LocalDate
@@ -110,6 +112,22 @@ fun PrayerTimesScreen(
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // Android 13+ gates notifications behind a runtime grant; without it the
+    // adhan service notification and sehri/iftar reminders are invisible.
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* Best effort: the app keeps working without the grant. */ }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     var pendingAudioPrayer by remember { mutableStateOf<PrayerName?>(null) }
@@ -234,7 +252,13 @@ fun PrayerTimesScreen(
                 )
             }
 
-            item { RamadanCard(state) }
+            item {
+                RamadanCard(
+                    state = state,
+                    onToggleSehri = viewModel::setSehriAlarmEnabled,
+                    onToggleIftar = viewModel::setIftarAlarmEnabled,
+                )
+            }
 
             item {
                 HijriCalendarCard(
@@ -434,15 +458,29 @@ private fun TodayCard(state: PrayerTimesUiState) {
             )
             state.hijri?.let { hijri ->
                 Text(
-                    text = "${hijri.day} ${hijri.monthEnglish} ${hijri.year} AH",
+                    text = "${hijri.day} ${IslamicEvents.monthNameBangla(hijri.monthNumber)} " +
+                        "${hijri.year} হিজরি",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = hijri.monthArabic,
+                    text = "${hijri.monthEnglish} · ${hijri.monthArabic}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                IslamicEvents.forDate(hijri.monthNumber, hijri.day)?.let { event ->
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Gold.copy(alpha = 0.22f),
+                    ) {
+                        Text(
+                            text = "${event.title} · ${event.arabicTitle}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
+                    }
+                }
             }
         }
     }
@@ -534,9 +572,14 @@ private fun PrayerRow(
 }
 
 @Composable
-private fun RamadanCard(state: PrayerTimesUiState) {
+private fun RamadanCard(
+    state: PrayerTimesUiState,
+    onToggleSehri: (Boolean) -> Unit,
+    onToggleIftar: (Boolean) -> Unit,
+) {
     val spacing = LocalSpacing.current
     val day = state.today
+    val ramadanDays = state.monthDays.filter { it.isRamadan }.sortedBy { it.gregorian }
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
@@ -573,7 +616,100 @@ private fun RamadanCard(state: PrayerTimesUiState) {
                     modifier = Modifier.weight(1f),
                 )
             }
+
+            HorizontalDivider(Modifier.padding(vertical = 4.dp))
+
+            ReminderRow(
+                label = "সেহরির রিমাইন্ডার",
+                checked = state.sehriAlarmEnabled,
+                onCheckedChange = onToggleSehri,
+            )
+            ReminderRow(
+                label = "ইফতারের রিমাইন্ডার",
+                checked = state.iftarAlarmEnabled,
+                onCheckedChange = onToggleIftar,
+            )
+
+            if (ramadanDays.isNotEmpty()) {
+                Text(
+                    text = "রমজান মাসের সময়সূচি",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "তারিখ",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1.1f),
+                    )
+                    Text(
+                        text = "সেহরি",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        text = "ইফতার",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                ramadanDays.forEach { entry -> RamadanScheduleRow(entry) }
+            }
         }
+    }
+}
+
+@Composable
+private fun ReminderRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun RamadanScheduleRow(day: HijriCalendarDay) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 1.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "${day.hijriDay.toString().asBanglaDigits()} রমজান · " +
+                day.gregorian.format(SHORT_DATE),
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.weight(1.1f),
+        )
+        Text(
+            text = day.imsak?.format(CLOCK)?.asBanglaDigits() ?: "—",
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = day.maghrib?.format(CLOCK)?.asBanglaDigits() ?: "—",
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
@@ -656,6 +792,47 @@ private fun HijriCalendarCard(
                 )
             } else {
                 HijriMonthGrid(days = state.monthDays)
+
+                val monthEvents = IslamicEvents.inMonth(state.monthDays)
+                if (monthEvents.isNotEmpty()) {
+                    HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                    Text(
+                        text = "গুরুত্বপূর্ণ দিন",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Gold,
+                    )
+                    monthEvents.forEach { (eventDay, event) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = event.title,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    text = "${event.arabicTitle} · " +
+                                        "${eventDay.hijriDay.toString().asBanglaDigits()} " +
+                                        IslamicEvents.monthNameBangla(
+                                            eventDay.hijriMonthNumber,
+                                        ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Text(
+                                text = eventDay.gregorian.format(SHORT_DATE),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -690,6 +867,7 @@ private fun HijriMonthGrid(days: List<HijriCalendarDay>) {
                             DayCell(
                                 day = cell,
                                 isToday = cell.gregorian == today,
+                                isEvent = IslamicEvents.forDay(cell) != null,
                             )
                         }
                     }
@@ -701,32 +879,31 @@ private fun HijriMonthGrid(days: List<HijriCalendarDay>) {
 }
 
 @Composable
-private fun DayCell(day: HijriCalendarDay, isToday: Boolean) {
+private fun DayCell(day: HijriCalendarDay, isToday: Boolean, isEvent: Boolean) {
     val shape = RoundedCornerShape(10.dp)
+    val highlight = when {
+        isEvent -> Gold.copy(alpha = 0.24f)
+        isToday -> MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+        else -> Color.Transparent
+    }
+    val numberColor = when {
+        isEvent -> Gold
+        isToday -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurface
+    }
     Column(
         modifier = Modifier
             .padding(1.dp)
             .fillMaxWidth()
-            .background(
-                color = if (isToday) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
-                } else {
-                    Color.Transparent
-                },
-                shape = shape,
-            )
+            .background(color = highlight, shape = shape)
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = day.hijriDay.toString().asBanglaDigits(),
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
-            color = if (isToday) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
+            fontWeight = if (isToday || isEvent) FontWeight.Bold else FontWeight.Normal,
+            color = numberColor,
         )
         Text(
             text = day.gregorian.dayOfMonth.toString(),
@@ -819,6 +996,7 @@ private fun String.asBanglaDigits(): String = map { char ->
 private val CLOCK = DateTimeFormatter.ofPattern("HH:mm", Locale.US)
 private val ENGLISH_DATE = DateTimeFormatter.ofPattern("dd MMMM yyyy, EEEE", Locale.ENGLISH)
 private val ENGLISH_MONTH = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)
+private val SHORT_DATE = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
 
 /** Bangladesh's week starts on Saturday. */
 private val WEEKDAY_LABELS = listOf("শনি", "রবি", "সোম", "মঙ্গল", "বুধ", "বৃহঃ", "শুক্র")

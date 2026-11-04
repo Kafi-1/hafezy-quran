@@ -69,10 +69,12 @@ import com.hafeziquran.app.core.util.normalizeYouTubeId
  * Two load strategies are tried, because WebView behaviour varies across WebView
  * versions and devices:
  *
- *  * [LoadStrategy.DIRECT] navigates straight to `youtube.com/embed/<id>`, giving
- *    the page a genuine `youtube.com` origin and referer.
- *  * [LoadStrategy.IFRAME] wraps the same embed in an `<iframe>` inside local
- *    HTML loaded with a `youtube.com` base URL.
+ *  * [LoadStrategy.IFRAME] wraps the embed in an `<iframe>` inside local HTML
+ *    loaded with [REFERER_ORIGIN] as its base URL. The resulting request carries
+ *    a genuine `https://com.hafeziquran.app` Referer, which YouTube requires —
+ *    without it the embed answers with player Error 153.
+ *  * [LoadStrategy.DIRECT] navigates straight to `youtube.com/embed/<id>` and
+ *    supplies the same origin as an explicit `Referer` header.
  *
  * If the main frame fails to load, the other strategy is tried automatically; the
  * user can also switch manually, or hand the video to the YouTube app, so a black
@@ -198,7 +200,9 @@ fun VideoPlayerScreen(
     }
 }
 
-private enum class LoadStrategy { DIRECT, IFRAME }
+// IFRAME first: it is the only strategy that reliably sends the Referer header
+// YouTube's embed requires (Error 153 is raised when it is missing).
+private enum class LoadStrategy { IFRAME, DIRECT }
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -289,13 +293,16 @@ private fun YouTubeEmbed(
                 webChromeClient = chromeClient
 
                 when (strategy) {
-                    LoadStrategy.DIRECT -> loadUrl(embedUrl(youtubeId))
                     LoadStrategy.IFRAME -> loadDataWithBaseURL(
-                        BASE_URL,
+                        REFERER_ORIGIN,
                         embedHtml(youtubeId),
                         "text/html",
                         "utf-8",
                         null,
+                    )
+                    LoadStrategy.DIRECT -> loadUrl(
+                        embedUrl(youtubeId),
+                        mapOf("Referer" to "$REFERER_ORIGIN/"),
                     )
                 }
             }
@@ -375,7 +382,7 @@ private fun embedHtml(youtubeId: String): String = """
       <iframe
         src="${embedUrl(youtubeId)}"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        referrerpolicy="origin"
+        referrerpolicy="strict-origin-when-cross-origin"
         allowfullscreen>
       </iframe>
     </body>
@@ -403,4 +410,10 @@ private fun Context.findActivity(): Activity? {
 }
 
 private const val BASE_URL = "https://www.youtube.com"
+
+// Must match the app id in app/build.gradle.kts. YouTube's embed rejects requests
+// whose Referer is missing or does not identify a valid origin (player Error 153),
+// so every load path supplies this as both base URL and Referer.
+private const val REFERER_ORIGIN = "https://com.hafeziquran.app"
+
 private const val TAG = "VideoPlayerScreen"

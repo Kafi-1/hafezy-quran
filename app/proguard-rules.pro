@@ -27,3 +27,13 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
+
+# Retrofit builds its implementation through a dynamic proxy and reads the HTTP
+# annotations at runtime, so the service interface and its signatures must survive
+# R8 in release builds.
+-keepattributes Signature, InnerClasses, EnclosingMethod
+-keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations, AnnotationDefault
+-keep interface com.hafeziquran.app.data.remote.AlAdhanService { *; }
+-keep,allowobfuscation,allowshrinking interface retrofit2.Call
+-keep,allowobfuscation,allowshrinking class retrofit2.Response
+-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation

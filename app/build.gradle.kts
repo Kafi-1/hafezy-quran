@@ -191,4 +191,10 @@ dependencies {
 
     // --- Thumbnails for the video catalogue ---
     implementation(libs.coil.compose)
+
+    // --- Networking: AlAdhan prayer-times / Hijri calendar client ---
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.kotlinx.serialization)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
 }

@@ -27,6 +27,8 @@ data class PrayerSettingsSnapshot(
     val location: PrayerLocation?,
     val adhanEnabled: Map<PrayerName, Boolean>,
     val audioUris: Map<PrayerName, String?>,
+    val sehriAlarmEnabled: Boolean,
+    val iftarAlarmEnabled: Boolean,
 )
 
 /**
@@ -43,6 +45,8 @@ class PrayerPreferences @Inject constructor(
         val LOCATION_NAME = stringPreferencesKey("location_name")
         val LOCATION_LAT = doublePreferencesKey("location_lat")
         val LOCATION_LNG = doublePreferencesKey("location_lng")
+        val SEHRI_ALARM = booleanPreferencesKey("sehri_alarm_enabled")
+        val IFTAR_ALARM = booleanPreferencesKey("iftar_alarm_enabled")
     }
 
     private fun enabledKey(prayer: PrayerName) =
@@ -78,6 +82,14 @@ class PrayerPreferences @Inject constructor(
         PrayerName.entries.associateWith { prefs[audioKey(it)] }
     }
 
+    val sehriAlarmEnabled: Flow<Boolean> = context.prayerDataStore.data.map {
+        it[Keys.SEHRI_ALARM] ?: false
+    }
+
+    val iftarAlarmEnabled: Flow<Boolean> = context.prayerDataStore.data.map {
+        it[Keys.IFTAR_ALARM] ?: false
+    }
+
     suspend fun snapshot(): PrayerSettingsSnapshot {
         val prefs = context.prayerDataStore.data.first()
         val location = run {
@@ -94,6 +106,8 @@ class PrayerPreferences @Inject constructor(
             location = location,
             adhanEnabled = PrayerName.entries.associateWith { prefs[enabledKey(it)] ?: true },
             audioUris = PrayerName.entries.associateWith { prefs[audioKey(it)] },
+            sehriAlarmEnabled = prefs[Keys.SEHRI_ALARM] ?: false,
+            iftarAlarmEnabled = prefs[Keys.IFTAR_ALARM] ?: false,
         )
     }
 
@@ -121,5 +135,13 @@ class PrayerPreferences @Inject constructor(
         context.prayerDataStore.edit { prefs ->
             if (uri == null) prefs.remove(audioKey(prayer)) else prefs[audioKey(prayer)] = uri
         }
+    }
+
+    suspend fun setSehriAlarmEnabled(enabled: Boolean) {
+        context.prayerDataStore.edit { it[Keys.SEHRI_ALARM] = enabled }
+    }
+
+    suspend fun setIftarAlarmEnabled(enabled: Boolean) {
+        context.prayerDataStore.edit { it[Keys.IFTAR_ALARM] = enabled }
     }
 }

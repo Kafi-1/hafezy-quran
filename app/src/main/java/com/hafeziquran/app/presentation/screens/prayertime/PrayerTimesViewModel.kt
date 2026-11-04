@@ -16,7 +16,7 @@ import com.hafeziquran.app.data.model.PrayerDay
 import com.hafeziquran.app.data.model.PrayerLocation
 import com.hafeziquran.app.data.model.PrayerName
 import com.hafeziquran.app.data.preferences.PrayerPreferences
-import com.hafeziquran.app.data.repository.PrayerTimesRepository
+import com.hafeziquran.app.domain.repository.PrayerTimesRepository
 import com.hafeziquran.app.prayer.AdhanScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -47,6 +47,8 @@ data class PrayerTimesUiState(
     val stale: Boolean = false,
     val adhanEnabled: Map<PrayerName, Boolean> = emptyMap(),
     val audioUris: Map<PrayerName, String?> = emptyMap(),
+    val sehriAlarmEnabled: Boolean = false,
+    val iftarAlarmEnabled: Boolean = false,
     val displayedMonth: YearMonth = YearMonth.now(),
     val monthDays: List<HijriCalendarDay> = emptyList(),
     val canScheduleExact: Boolean = true,
@@ -83,9 +85,18 @@ class PrayerTimesViewModel @Inject constructor(
             combine(
                 preferences.allAdhanEnabled,
                 preferences.allAudioUris,
-            ) { enabled, uris -> enabled to uris }
-                .collect { (enabled, uris) ->
-                    _state.update { it.copy(adhanEnabled = enabled, audioUris = uris) }
+                preferences.sehriAlarmEnabled,
+                preferences.iftarAlarmEnabled,
+            ) { enabled, uris, sehri, iftar -> Settings(enabled, uris, sehri, iftar) }
+                .collect { settings ->
+                    _state.update {
+                        it.copy(
+                            adhanEnabled = settings.adhanEnabled,
+                            audioUris = settings.audioUris,
+                            sehriAlarmEnabled = settings.sehriAlarmEnabled,
+                            iftarAlarmEnabled = settings.iftarAlarmEnabled,
+                        )
+                    }
                 }
         }
     }
@@ -134,6 +145,20 @@ class PrayerTimesViewModel @Inject constructor(
 
     fun setAudioUri(prayer: PrayerName, uri: String?) {
         viewModelScope.launch { preferences.setAdhanAudioUri(prayer, uri) }
+    }
+
+    fun setSehriAlarmEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            preferences.setSehriAlarmEnabled(enabled)
+            scheduler.rescheduleAll()
+        }
+    }
+
+    fun setIftarAlarmEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            preferences.setIftarAlarmEnabled(enabled)
+            scheduler.rescheduleAll()
+        }
     }
 
     fun changeMonth(offset: Long) {
@@ -258,6 +283,13 @@ class PrayerTimesViewModel @Inject constructor(
                 location.longitude,
             )
     }
+
+    private data class Settings(
+        val adhanEnabled: Map<PrayerName, Boolean>,
+        val audioUris: Map<PrayerName, String?>,
+        val sehriAlarmEnabled: Boolean,
+        val iftarAlarmEnabled: Boolean,
+    )
 
     private companion object {
         const val FRESH_FIX_MS = 10 * 60 * 1000L

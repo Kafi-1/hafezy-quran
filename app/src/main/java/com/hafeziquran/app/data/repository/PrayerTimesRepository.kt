@@ -5,74 +5,107 @@ import com.hafeziquran.app.data.model.HijriCalendarDay
 import com.hafeziquran.app.data.model.PrayerDay
 import com.hafeziquran.app.data.model.PrayerLocation
 import com.hafeziquran.app.data.remote.AlAdhanApi
-import com.hafeziquran.app.data.remote.AlAdhanJson
+import com.hafeziquran.app.data.remote.AlAdhanCalendarResponse
+import com.hafeziquran.app.data.remote.AlAdhanDayResponse
+import com.hafeziquran.app.data.remote.toHijriCalendarDay
+import com.hafeziquran.app.data.remote.toPrayerDay
+import com.hafeziquran.app.domain.repository.PrayerTimesRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.serialization.json.Json
 import java.time.LocalDate
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Cache-first prayer-time access.
+ * Cache-first prayer-time access, implementing the domain contract.
  *
- * Raw AlAdhan JSON is stored in a small SharedPreferences file keyed by date and
- * rounded coordinates. A day that has already been fetched therefore works
- * offline, and the last successful day is re-served with `stale = true` so the
- * screen never goes blank when the network is down.
+ * The Retrofit DTOs are JSON-encoded into a small SharedPreferences file keyed by
+ * date and rounded coordinates. A day that has already been fetched therefore
+ * works offline, and the last successful day is re-served with `stale = true` so
+ * the screen never goes blank when the network is down.
  */
 @Singleton
-class PrayerTimesRepository @Inject constructor(
+class PrayerTimesRepositoryImpl @Inject constructor(
     @ApplicationContext context: Context,
     private val api: AlAdhanApi,
-) {
+    private val json: Json,
+) : PrayerTimesRepository {
     private val cache = context.getSharedPreferences(CACHE_NAME, Context.MODE_PRIVATE)
 
-    suspend fun getDay(
+    override suspend fun getDay(
         date: LocalDate,
         location: PrayerLocation,
-        forceRefresh: Boolean = false,
+        forceRefresh: Boolean,
     ): PrayerDay? {
         val key = dayKey(date, location)
         if (!forceRefresh) {
-            cached(key)?.let { raw -> AlAdhanJson.parseDay(raw)?.let { return it } }
+            cached(key)?.let { raw ->
+                decodeDay(raw)?.toPrayerDay()?.let { return it }
+            }
         }
 
-        val raw = api.fetchDayRaw(date, location.latitude, location.longitude)
-        if (raw != null) {
-            AlAdhanJson.parseDay(raw)?.let { day ->
-                cache.edit().putString(key, raw).putString(LAST_DAY, raw).apply()
+        api.fetchDay(date, location.latitude, location.longitude)?.let { response ->
+            response.toPrayerDay()?.let { day ->
+                val encoded = json.encodeToString(
+                    AlAdhanDayResponse.serializer(),
+                    response,
+                )
+                cache.edit().putString(key, encoded).putString(LAST_DAY, encoded).apply()
                 return day
             }
         }
 
         // No exact-day data. Serve the newest known day, clearly marked stale.
-        return cached(LAST_DAY)?.let { AlAdhanJson.parseDay(it)?.copy(stale = true) }
+        return cached(LAST_DAY)?.let { decodeDay(it)?.toPrayerDay()?.copy(stale = true) }
     }
 
-    suspend fun getMonth(
+    override suspend fun getMonth(
         year: Int,
         month: Int,
         location: PrayerLocation,
-        forceRefresh: Boolean = false,
+        forceRefresh: Boolean,
     ): List<HijriCalendarDay> {
         val key = monthKey(year, month, location)
         if (!forceRefresh) {
             cached(key)?.let { raw ->
-                AlAdhanJson.parseMonth(raw).takeIf { it.isNotEmpty() }?.let { return it }
+                decodeMonth(raw).takeIf { it.isNotEmpty() }?.let { return it }
             }
         }
 
-        val raw = api.fetchMonthRaw(year, month, location.latitude, location.longitude)
-        if (raw != null) {
-            val parsed = AlAdhanJson.parseMonth(raw)
+        api.fetchMonth(year, month, location.latitude, location.longitude)?.let { response ->
+            val parsed = response.toDays()
             if (parsed.isNotEmpty()) {
-                cache.edit().putString(key, raw).putString(lastMonthKey(location), raw).apply()
+                val encoded = json.encodeToString(
+                    AlAdhanCalendarResponse.serializer(),
+                    response,
+                )
+                cache.edit()
+                    .putString(key, encoded)
+                    .putString(lastMonthKey(location), encoded)
+                    .apply()
                 return parsed
             }
         }
 
-        return cached(lastMonthKey(location))?.let { AlAdhanJson.parseMonth(it) }.orEmpty()
+        return cached(lastMonthKey(location))?.let { decodeMonth(it) }.orEmpty()
     }
+
+    private fun decodeDay(raw: String): AlAdhanDayResponse? =
+        runCatching {
+            json.decodeFromString(AlAdhanDayResponse.serializer(), raw)
+        }.getOrNull()
+
+    private fun decodeMonth(raw: String): List<HijriCalendarDay> =
+        runCatching {
+            json.decodeFromString(AlAdhanCalendarResponse.serializer(), raw)
+        }
+            .getOrNull()
+            ?.toDays()
+            .orEmpty()
+
+    private fun AlAdhanCalendarResponse.toDays(): List<HijriCalendarDay> =
+        data.mapNotNull { it.toHijriCalendarDay() }
 
     private fun cached(key: String): String? = cache.getString(key, null)
 
