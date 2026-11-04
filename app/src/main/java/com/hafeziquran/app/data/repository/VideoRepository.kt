@@ -2,6 +2,7 @@ package com.hafeziquran.app.data.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.hafeziquran.app.core.util.normalizeYouTubeId
 import com.hafeziquran.app.data.model.VideoItem
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -32,7 +33,9 @@ class VideoRepository @Inject constructor() {
                 val videos = snapshot?.documents.orEmpty().mapNotNull { document ->
                     if (document.getBoolean(FIELD_ACTIVE) == false) return@mapNotNull null
 
-                    val youtubeId = document.getString(FIELD_YOUTUBE_ID)?.trim().orEmpty()
+                    val youtubeId = normalizeYouTubeId(
+                        document.getString(FIELD_YOUTUBE_ID).orEmpty(),
+                    )
                     if (youtubeId.isEmpty()) return@mapNotNull null
 
                     VideoItem(

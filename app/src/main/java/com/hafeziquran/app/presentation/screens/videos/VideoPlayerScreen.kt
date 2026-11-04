@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.graphics.Color as AndroidColor
+import android.net.Uri
 import android.util.Log
 import android.view.View
 import android.webkit.ConsoleMessage
@@ -23,6 +24,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,35 +33,50 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.hafeziquran.app.BuildConfig
+import com.hafeziquran.app.core.util.normalizeYouTubeId
 
 /**
  * Plays a catalogue entry inside the app via YouTube's embed player.
  *
  * A WebView is used rather than an external player because the catalogue only
- * stores a YouTube id: direct stream URLs are not exposed by YouTube. The embed
- * HTML is loaded with a `youtube.com` base URL so the iframe request carries a
- * valid origin/referer, and the `"; wv"` WebView marker is stripped from the
- * User-Agent — YouTube serves a broken, blank player to requests that advertise
- * themselves as an embedded WebView.
+ * stores a YouTube id: direct stream URLs are not exposed by YouTube.
+ *
+ * Two load strategies are tried, because WebView behaviour varies across WebView
+ * versions and devices:
+ *
+ *  * [LoadStrategy.DIRECT] navigates straight to `youtube.com/embed/<id>`, giving
+ *    the page a genuine `youtube.com` origin and referer.
+ *  * [LoadStrategy.IFRAME] wraps the same embed in an `<iframe>` inside local
+ *    HTML loaded with a `youtube.com` base URL.
+ *
+ * If the main frame fails to load, the other strategy is tried automatically; the
+ * user can also switch manually, or hand the video to the YouTube app, so a black
+ * player never leaves them stuck.
  */
 @Composable
 fun VideoPlayerScreen(
@@ -68,7 +85,12 @@ fun VideoPlayerScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val id = remember(youtubeId) { normalizeYouTubeId(youtubeId) }
+
     var isFullscreen by remember { mutableStateOf(false) }
+    var strategy by remember { mutableIntStateOf(LoadStrategy.DIRECT.ordinal) }
+    var failed by remember { mutableStateOf(false) }
+
     val chromeClient = remember {
         YouTubeChromeClient(context.findActivity()) { fullscreen -> isFullscreen = fullscreen }
     }
@@ -107,13 +129,26 @@ fun VideoPlayerScreen(
                 .padding(innerPadding)
                 .background(Color.Black),
         ) {
-            YouTubeEmbed(
-                youtubeId = youtubeId,
-                chromeClient = chromeClient,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f),
-            )
+            // Recreating the WebView on a strategy change is deliberate: a
+            // half-loaded player cannot be reliably reused.
+            key(strategy) {
+                YouTubeEmbed(
+                    youtubeId = id,
+                    strategy = LoadStrategy.entries[strategy],
+                    chromeClient = chromeClient,
+                    onMainFrameError = {
+                        val next = strategy + 1
+                        if (next < LoadStrategy.entries.size) {
+                            strategy = next
+                        } else {
+                            failed = true
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f),
+                )
+            }
 
             Spacer(Modifier.height(16.dp))
 
@@ -122,38 +157,66 @@ fun VideoPlayerScreen(
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surface)
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
                     text = title.ifBlank { "ভিডিও" },
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                Text(
-                    text = "ভিডিও লোড না হলে ইন্টারনেট সংযোগ দেখুন। ফুলস্ক্রিনের জন্য " +
-                        "প্লেয়ারের ফুলস্ক্রিন বাটনে চাপ দিন।",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+
+                if (failed) {
+                    Text(
+                        text = "ভিডিওটি এখানে চালু করা যাচ্ছে না। YouTube অ্যাপে খুলে " +
+                            "দেখুন, অথবা আবার চেষ্টা করুন।",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                } else {
+                    Text(
+                        text = "ভিডিও লোড না হলে নিচের বাটনে চাপ দিন।",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TextButton(
+                        onClick = { failed = false; strategy = 0 },
+                    ) {
+                        Text("আবার চেষ্টা করুন")
+                    }
+                    TextButton(onClick = { openInYouTube(context, id) }) {
+                        Text("YouTube অ্যাপে খুলুন")
+                    }
+                }
             }
         }
     }
 }
 
+private enum class LoadStrategy { DIRECT, IFRAME }
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun YouTubeEmbed(
     youtubeId: String,
+    strategy: LoadStrategy,
     chromeClient: WebChromeClient,
+    onMainFrameError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val html = remember(youtubeId) { embedHtml(youtubeId) }
-
     AndroidView(
         modifier = modifier,
         factory = { context ->
             WebView(context).apply {
                 setBackgroundColor(AndroidColor.BLACK)
+                // A software layer on the WebView is a classic cause of a black
+                // video surface under Compose, so pin it to hardware.
+                setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
                 // Lets chrome://inspect see the embed on debug builds — the only
                 // way to read YouTube's own console errors on a device.
@@ -162,7 +225,7 @@ private fun YouTubeEmbed(
                     WebView.setWebContentsDebuggingEnabled(true)
                 }
 
-                // YouTube's embed sets playback cookies on a third-party domain;
+                // The embed sets playback cookies on a third-party domain;
                 // without them some videos stall on a black frame.
                 CookieManager.getInstance().setAcceptCookie(true)
                 CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
@@ -175,6 +238,7 @@ private fun YouTubeEmbed(
                     loadWithOverviewMode = true
                     useWideViewPort = true
                     javaScriptCanOpenWindowsAutomatically = true
+                    setSupportMultipleWindows(false)
                     setSupportZoom(false)
                     builtInZoomControls = false
                     // Remove the "; wv" token: YouTube refuses to play embeds for
@@ -206,9 +270,11 @@ private fun YouTubeEmbed(
                     ) {
                         Log.e(
                             TAG,
-                            "WebView error on ${request.url}: ${error.errorCode} " +
-                                error.description,
+                            "error on ${request.url}: ${error.errorCode} ${error.description}",
                         )
+                        // Sub-resource failures (ads, thumbnails) are expected;
+                        // only a dead main frame means the strategy failed.
+                        if (request.isForMainFrame) onMainFrameError()
                     }
 
                     override fun onReceivedHttpError(
@@ -216,22 +282,26 @@ private fun YouTubeEmbed(
                         request: WebResourceRequest,
                         errorResponse: WebResourceResponse,
                     ) {
-                        Log.e(
-                            TAG,
-                            "WebView HTTP ${errorResponse.statusCode} on ${request.url}",
-                        )
+                        Log.e(TAG, "HTTP ${errorResponse.statusCode} on ${request.url}")
                     }
                 }
 
                 webChromeClient = chromeClient
 
-                // The base URL gives the page a real https origin, so the iframe
-                // request carries a youtube.com referer instead of "null".
-                loadDataWithBaseURL(BASE_URL, html, "text/html", "utf-8", null)
+                when (strategy) {
+                    LoadStrategy.DIRECT -> loadUrl(embedUrl(youtubeId))
+                    LoadStrategy.IFRAME -> loadDataWithBaseURL(
+                        BASE_URL,
+                        embedHtml(youtubeId),
+                        "text/html",
+                        "utf-8",
+                        null,
+                    )
+                }
             }
         },
         onRelease = { webView ->
-            // Stop the iframe's audio track as soon as the screen is popped.
+            // Stop the player's audio track as soon as the screen is popped.
             webView.stopLoading()
             webView.loadUrl("about:blank")
             webView.destroy()
@@ -288,6 +358,9 @@ private class YouTubeChromeClient(
     }
 }
 
+private fun embedUrl(youtubeId: String): String =
+    "$BASE_URL/embed/$youtubeId?autoplay=1&playsinline=1&rel=0&modestbranding=1"
+
 private fun embedHtml(youtubeId: String): String = """
     <!DOCTYPE html>
     <html>
@@ -300,7 +373,7 @@ private fun embedHtml(youtubeId: String): String = """
     </head>
     <body>
       <iframe
-        src="$BASE_URL/embed/$youtubeId?autoplay=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1"
+        src="${embedUrl(youtubeId)}"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         referrerpolicy="origin"
         allowfullscreen>
@@ -308,6 +381,16 @@ private fun embedHtml(youtubeId: String): String = """
     </body>
     </html>
 """.trimIndent()
+
+private fun openInYouTube(context: Context, youtubeId: String) {
+    val appIntent = Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:$youtubeId"))
+    val webIntent = Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse("https://www.youtube.com/watch?v=$youtubeId"),
+    )
+    runCatching { context.startActivity(appIntent) }
+        .onFailure { runCatching { context.startActivity(webIntent) } }
+}
 
 /** Walks the ContextWrapper chain to the hosting Activity, for fullscreen views. */
 private fun Context.findActivity(): Activity? {
