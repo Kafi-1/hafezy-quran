@@ -43,6 +43,11 @@ fun splitAyahWords(text: String): List<String> =
  * restates an alef or alef maqsura already present (`عَلَىٰ`, `إِلَىٰ`): there it
  * adds no letter and is dropped, so `على` stays `علي` rather than drifting to
  * `عليا`.
+ *
+ * A dagger alif can also sit *next to* a real alef that begins the following
+ * morpheme — `يَٰٓأَيُّهَا` is "يا" + "أيها". Folding both to `ا` would yield
+ * `ياايها`, which no longer matches the transcript (`يايها`), so any run of two
+ * or more alefs that survives all the substitutions is collapsed to one.
  */
 fun normalizeArabicWord(word: String): String {
     val normalized = java.text.Normalizer.normalize(word, java.text.Normalizer.Form.NFC)
@@ -60,6 +65,7 @@ fun normalizeArabicWord(word: String): String {
         .replace('\u06D2', '\u064A') // yeh barree (Urdu) -> yeh
         .replace('\u06A9', '\u0643') // keheh
         .replace('\u06BE', '\u0647') // heh doachashmee -> heh
+        .replace(REPEATED_ALEF, "\u0627") // collapse dagger+alef collisions to one alef
     return normalized.filter { it in '\u0621'..'\u064A' }
 }
 
@@ -212,3 +218,6 @@ private val REDUNDANT_DAGGER_ALEF = Regex("([\\u0627\\u0649])\\u0670")
 
 /** Dagger alif (superscript alef) that stands in for a full alef. */
 private val DAGGER_ALEF = Regex("\\u0670")
+
+/** Two or more adjacent alefs, which normalized Arabic never legitimately holds. */
+private val REPEATED_ALEF = Regex("\\u0627{2,}")
