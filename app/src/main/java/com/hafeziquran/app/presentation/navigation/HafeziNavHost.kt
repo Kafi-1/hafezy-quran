@@ -35,6 +35,7 @@ import com.hafeziquran.app.presentation.screens.home.HomeScreen
 import com.hafeziquran.app.presentation.screens.info.InfoScreen
 import com.hafeziquran.app.presentation.screens.info.InfoSection
 import com.hafeziquran.app.presentation.screens.para.ParaListScreen
+import com.hafeziquran.app.presentation.screens.prayertime.PrayerTimesScreen
 import com.hafeziquran.app.presentation.screens.reader.ReaderScreen
 import com.hafeziquran.app.presentation.screens.recitation.RecitationScreen
 import com.hafeziquran.app.presentation.screens.search.SearchScreen
@@ -109,6 +110,7 @@ fun HafeziNavHost() {
                     onSobok = { navController.navigate(Screen.Sobok.route) },
                     onRecitation = { navController.navigate(Screen.Recitation.createRoute()) },
                     onVideos = { navController.navigate(Screen.Videos.route) },
+                    onPrayerTimes = { navController.navigate(Screen.PrayerTimes.route) },
                     onSettings = { navController.navigate(Screen.Settings.route) },
                 )
             }
@@ -210,6 +212,10 @@ fun HafeziNavHost() {
                 // The page argument is read by RecitationViewModel from
                 // SavedStateHandle, so the screen needs no navigation knowledge.
                 RecitationScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(Screen.PrayerTimes.route) {
+                PrayerTimesScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Screen.Videos.route) {

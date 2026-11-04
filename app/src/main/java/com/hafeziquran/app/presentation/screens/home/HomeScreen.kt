@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.Mosque
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Search
@@ -63,6 +64,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -94,6 +96,7 @@ fun HomeScreen(
     onSobok: () -> Unit,
     onRecitation: () -> Unit,
     onVideos: () -> Unit,
+    onPrayerTimes: () -> Unit,
     onSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -108,7 +111,7 @@ fun HomeScreen(
             contentPadding = PaddingValues(bottom = spacing.lg),
             verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
-            item { HomeHeader(onSettings = onSettings) }
+            item { HomeHeader(onPrayerTimes = onPrayerTimes, onSettings = onSettings) }
 
             item {
                 ContinueReadingCard(
@@ -168,7 +171,7 @@ fun HomeScreen(
  * the top of the screen) and pads its own content below it.
  */
 @Composable
-private fun HomeHeader(onSettings: () -> Unit) {
+private fun HomeHeader(onPrayerTimes: () -> Unit, onSettings: () -> Unit) {
     val spacing = LocalSpacing.current
     val context = LocalContext.current
 
@@ -217,6 +220,14 @@ private fun HomeHeader(onSettings: () -> Unit) {
                     text = "আসসালামু আলাইকুম",
                     style = MaterialTheme.typography.bodySmall,
                     color = Gold,
+                )
+            }
+
+            IconButton(onClick = onPrayerTimes) {
+                Icon(
+                    imageVector = Icons.Outlined.Mosque,
+                    contentDescription = "নামাজের সময়",
+                    tint = MaterialTheme.colorScheme.onPrimary,
                 )
             }
 
@@ -511,7 +522,7 @@ private fun FeatureCard(feature: FeatureItem, modifier: Modifier = Modifier) {
 
     Card(
         onClick = feature.onClick,
-        modifier = modifier.height(104.dp),
+        modifier = modifier.height(112.dp),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
@@ -519,13 +530,14 @@ private fun FeatureCard(feature: FeatureItem, modifier: Modifier = Modifier) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(spacing.sm),
-            verticalArrangement = Arrangement.SpaceBetween,
+                .padding(horizontal = spacing.sm, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(11.dp))
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
@@ -540,27 +552,29 @@ private fun FeatureCard(feature: FeatureItem, modifier: Modifier = Modifier) {
                     imageVector = feature.icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(19.dp),
+                    modifier = Modifier.size(23.dp),
                 )
             }
 
-            Column {
-                Text(
-                    text = feature.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = feature.subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Spacer(Modifier.height(6.dp))
+
+            Text(
+                text = feature.title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = feature.subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

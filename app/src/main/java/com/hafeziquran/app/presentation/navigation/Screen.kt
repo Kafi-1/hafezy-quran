@@ -83,6 +83,9 @@ sealed class Screen(val route: String) {
             "recitation?$ARG_PAGE=${page ?: NO_PAGE}"
     }
 
+    /** Prayer times, adhan alarms, Hijri calendar and Ramadan schedule. */
+    data object PrayerTimes : Screen("prayer_times")
+
     /** Firestore-backed video catalogue; open to guests as well. */
     data object Videos : Screen("videos")
 

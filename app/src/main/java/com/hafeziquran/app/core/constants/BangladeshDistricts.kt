@@ -1,0 +1,83 @@
+package com.hafeziquran.app.core.constants
+
+/** One selectable location for prayer-time calculation. */
+data class District(
+    val name: String,
+    val banglaName: String,
+    val latitude: Double,
+    val longitude: Double,
+)
+
+/**
+ * The 64 districts of Bangladesh with approximate centres.
+ *
+ * Used by the prayer-times setup screen so a user can pick a district without
+ * granting location permission. Coordinates are district centres — accurate to
+ * a few kilometres, which moves prayer times by well under a minute.
+ */
+val BANGLADESH_DISTRICTS: List<District> = listOf(
+    District("Dhaka", "ঢাকা", 23.8103, 90.4125),
+    District("Gazipur", "গাজীপুর", 23.9999, 90.4203),
+    District("Narayanganj", "নারায়ণগঞ্জ", 23.6238, 90.5000),
+    District("Narsingdi", "নরসিংদী", 23.9322, 90.7151),
+    District("Manikganj", "মানিকগঞ্জ", 23.8617, 90.0003),
+    District("Munshiganj", "মুন্সিগঞ্জ", 23.5422, 90.5305),
+    District("Tangail", "টাঙ্গাইল", 24.2513, 89.9167),
+    District("Kishoreganj", "কিশোরগঞ্জ", 24.4449, 90.7766),
+    District("Faridpur", "ফরিদপুর", 23.6070, 89.8429),
+    District("Gopalganj", "গোপালগঞ্জ", 23.0050, 89.8266),
+    District("Madaripur", "মাদারীপুর", 23.1640, 90.1897),
+    District("Shariatpur", "শরীয়তপুর", 23.2423, 90.4348),
+    District("Rajbari", "রাজবাড়ী", 23.7574, 89.6445),
+    District("Chattogram", "চট্টগ্রাম", 22.3569, 91.7832),
+    District("Cox's Bazar", "কক্সবাজার", 21.4272, 92.0058),
+    District("Cumilla", "কুমিল্লা", 23.4607, 91.1809),
+    District("Brahmanbaria", "ব্রাহ্মণবাড়িয়া", 23.9571, 91.1119),
+    District("Chandpur", "চাঁদপুর", 23.2333, 90.6712),
+    District("Lakshmipur", "লক্ষ্মীপুর", 22.9447, 90.8282),
+    District("Noakhali", "নোয়াখালী", 22.8696, 91.0995),
+    District("Feni", "ফেনী", 23.0159, 91.3976),
+    District("Khagrachhari", "খাগড়াছড়ি", 23.1193, 91.9847),
+    District("Rangamati", "রাঙ্গামাটি", 22.6533, 92.1735),
+    District("Bandarban", "বান্দরবান", 22.1953, 92.2184),
+    District("Sylhet", "সিলেট", 24.8949, 91.8687),
+    District("Moulvibazar", "মৌলভীবাজার", 24.4829, 91.7774),
+    District("Habiganj", "হবিগঞ্জ", 24.3745, 91.4155),
+    District("Sunamganj", "সুনামগঞ্জ", 25.0658, 91.3950),
+    District("Rajshahi", "রাজশাহী", 24.3745, 88.6042),
+    District("Bogura", "বগুড়া", 24.8465, 89.3773),
+    District("Pabna", "পাবনা", 24.0064, 89.2372),
+    District("Sirajganj", "সিরাজগঞ্জ", 24.4534, 89.7007),
+    District("Natore", "নাটোর", 24.4206, 89.0003),
+    District("Naogaon", "নওগাঁ", 24.7936, 88.9318),
+    District("Chapainawabganj", "চাঁপাইনবাবগঞ্জ", 24.5965, 88.2775),
+    District("Joypurhat", "জয়পুরহাট", 25.0947, 89.0227),
+    District("Dinajpur", "দিনাজপুর", 25.6217, 88.6354),
+    District("Rangpur", "রংপুর", 25.7439, 89.2752),
+    District("Kurigram", "কুড়িগ্রাম", 25.8072, 89.6295),
+    District("Gaibandha", "গাইবান্ধা", 25.3284, 89.5283),
+    District("Nilphamari", "নীলফামারী", 25.9317, 88.8560),
+    District("Lalmonirhat", "লালমনিরহাট", 25.9165, 89.4467),
+    District("Thakurgaon", "ঠাকুরগাঁও", 26.0337, 88.4616),
+    District("Panchagarh", "পঞ্চগড়", 26.3411, 88.5542),
+    District("Khulna", "খুলনা", 22.8456, 89.5403),
+    District("Jashore", "যশোর", 23.1664, 89.2081),
+    District("Satkhira", "সাতক্ষীরা", 22.7185, 89.0705),
+    District("Bagerhat", "বাগেরহাট", 22.6602, 89.7859),
+    District("Kushtia", "কুষ্টিয়া", 23.9013, 89.1206),
+    District("Jhenaidah", "ঝিনাইদহ", 23.5450, 89.1539),
+    District("Magura", "মাগুরা", 23.4855, 89.4198),
+    District("Narail", "নড়াইল", 23.1725, 89.5127),
+    District("Chuadanga", "চুয়াডাঙ্গা", 23.6402, 88.8556),
+    District("Meherpur", "মেহেরপুর", 23.7622, 88.6318),
+    District("Barishal", "বরিশাল", 22.7010, 90.3535),
+    District("Patuakhali", "পটুয়াখালী", 22.3596, 90.3299),
+    District("Bhola", "ভোলা", 22.6859, 90.6482),
+    District("Pirojpur", "পিরোজপুর", 22.5841, 89.9720),
+    District("Barguna", "বরগুনা", 22.0953, 90.1121),
+    District("Jhalokati", "ঝালকাঠি", 22.6406, 90.1987),
+    District("Mymensingh", "ময়মনসিংহ", 24.7471, 90.4203),
+    District("Jamalpur", "জামালপুর", 24.9375, 89.9372),
+    District("Sherpur", "শেরপুর", 25.0205, 90.0153),
+    District("Netrokona", "নেত্রকোণা", 24.8709, 90.7279),
+)
