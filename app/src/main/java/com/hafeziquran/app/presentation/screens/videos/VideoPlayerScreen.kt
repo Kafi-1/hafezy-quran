@@ -12,7 +12,6 @@ import android.util.Log
 import android.view.View
 import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
-import android.webkit.CustomViewCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -247,9 +246,9 @@ private class YouTubeChromeClient(
 ) : WebChromeClient() {
 
     private var fullscreenView: View? = null
-    private var callback: CustomViewCallback? = null
+    private var callback: WebChromeClient.CustomViewCallback? = null
 
-    override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+    override fun onShowCustomView(view: View?, callback: WebChromeClient.CustomViewCallback?) {
         if (fullscreenView != null) {
             callback?.onCustomViewHidden()
             return
