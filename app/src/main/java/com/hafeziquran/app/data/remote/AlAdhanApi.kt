@@ -37,7 +37,7 @@ class AlAdhanApi @Inject constructor() {
         get(
             "https://api.aladhan.com/v1/timings/$day" +
                 "?latitude=$latitude&longitude=$longitude" +
-                "&method=$CALCULATION_METHOD&timezone=${TIMEZONE.name}",
+                "&method=$CALCULATION_METHOD&timezone=${TIMEZONE.id}",
         )
     }
 
@@ -54,7 +54,7 @@ class AlAdhanApi @Inject constructor() {
         get(
             "https://api.aladhan.com/v1/gToHCalendar/$month/$year" +
                 "?latitude=$latitude&longitude=$longitude" +
-                "&method=$CALCULATION_METHOD&timezone=${TIMEZONE.name}",
+                "&method=$CALCULATION_METHOD&timezone=${TIMEZONE.id}",
         )
     }
 
