@@ -41,12 +41,12 @@ class PrayerTimesRepositoryImpl @Inject constructor(
         val key = dayKey(date, location)
         if (!forceRefresh) {
             cached(key)?.let { raw ->
-                decodeDay(raw)?.toPrayerDay()?.let { return it }
+                decodeDay(raw)?.data?.toPrayerDay()?.let { return it }
             }
         }
 
         api.fetchDay(date, location.latitude, location.longitude)?.let { response ->
-            response.toPrayerDay()?.let { day ->
+            response.data?.toPrayerDay()?.let { day ->
                 val encoded = json.encodeToString(
                     AlAdhanDayResponse.serializer(),
                     response,
@@ -57,7 +57,7 @@ class PrayerTimesRepositoryImpl @Inject constructor(
         }
 
         // No exact-day data. Serve the newest known day, clearly marked stale.
-        return cached(LAST_DAY)?.let { decodeDay(it)?.toPrayerDay()?.copy(stale = true) }
+        return cached(LAST_DAY)?.let { decodeDay(it)?.data?.toPrayerDay()?.copy(stale = true) }
     }
 
     override suspend fun getMonth(

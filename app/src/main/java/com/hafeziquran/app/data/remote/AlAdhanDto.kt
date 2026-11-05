@@ -70,7 +70,7 @@ fun AlAdhanDayData.toPrayerDay(): PrayerDay? {
     return PrayerDay(
         date = localDate,
         times = times,
-        imsak = parseTime(timings[IMSak_KEY]),
+        imsak = parseTime(timings[IMSAK_KEY]),
         maghrib = times[PrayerName.MAGHRIB],
         hijri = date?.hijri?.toModel(),
     )
@@ -91,7 +91,7 @@ fun AlAdhanDayData.toHijriCalendarDay(): HijriCalendarDay? {
         hijriMonthNumber = hijri.month.number,
         hijriMonthEnglish = hijri.month.en,
         hijriYear = hijriYear,
-        imsak = parseTime(timings[IMSak_KEY]),
+        imsak = parseTime(timings[IMSAK_KEY]),
         maghrib = parseTime(timings[PrayerName.MAGHRIB.apiKey]),
     )
 }
