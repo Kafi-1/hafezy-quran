@@ -49,6 +49,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -58,6 +59,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -80,6 +82,7 @@ import com.hafeziquran.app.data.model.HijriCalendarDay
 import com.hafeziquran.app.data.model.PrayerDay
 import com.hafeziquran.app.data.model.PrayerName
 import com.hafeziquran.app.domain.calendar.IslamicEvents
+import com.hafeziquran.app.domain.prayer.PrayerTuner
 import com.hafeziquran.app.presentation.theme.Gold
 import com.hafeziquran.app.presentation.theme.LocalSpacing
 import java.time.LocalDate
@@ -87,6 +90,7 @@ import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /**
  * Prayer times, adhan controls, Hijri calendar and Ramadan sehri/iftar.
@@ -249,6 +253,15 @@ fun PrayerTimesScreen(
                         pendingAudioPrayer = prayer
                         audioPicker.launch(arrayOf("audio/*"))
                     },
+                )
+            }
+
+            item {
+                TuneCard(
+                    state = state,
+                    onSetTune = viewModel::setTuneMinutes,
+                    onPreset = viewModel::applyJamaatPreset,
+                    onReset = viewModel::resetTune,
                 )
             }
 
@@ -513,6 +526,7 @@ private fun PrayerListCard(
                 PrayerRow(
                     prayer = prayer,
                     time = times[prayer],
+                    offsetMinutes = state.tuneMinutes[prayer] ?: 0,
                     adhanEnabled = state.adhanEnabled[prayer] ?: true,
                     hasCustomAudio = state.audioUris[prayer] != null,
                     onToggleAdhan = { onToggleAdhan(prayer, it) },
@@ -527,6 +541,7 @@ private fun PrayerListCard(
 private fun PrayerRow(
     prayer: PrayerName,
     time: LocalTime?,
+    offsetMinutes: Int,
     adhanEnabled: Boolean,
     hasCustomAudio: Boolean,
     onToggleAdhan: (Boolean) -> Unit,
@@ -549,6 +564,13 @@ private fun PrayerRow(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (offsetMinutes != 0) {
+                Text(
+                    text = "${offsetLabel(offsetMinutes)} জামাত অনুযায়ী",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Gold,
+                )
+            }
         }
         Text(
             text = time?.format(CLOCK)?.asBanglaDigits() ?: "—",
@@ -569,6 +591,119 @@ private fun PrayerRow(
         }
         Switch(checked = adhanEnabled, onCheckedChange = onToggleAdhan)
     }
+}
+
+/**
+ * Lets the user shift each prayer to match their mosque's jamaat. AlAdhan returns
+ * the waqt *start*; a mosque usually prays later, so a per-prayer minute offset is
+ * added. The offset is previewed instantly (no network) and drives the adhan alarms.
+ */
+@Composable
+private fun TuneCard(
+    state: PrayerTimesUiState,
+    onSetTune: (PrayerName, Int) -> Unit,
+    onPreset: () -> Unit,
+    onReset: () -> Unit,
+) {
+    val spacing = LocalSpacing.current
+    val times = state.today?.times.orEmpty()
+    val isWaqtStart = state.tuneMinutes.values.all { it == 0 }
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(spacing.md),
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
+        ) {
+            Text(
+                text = "সময় অ্যাডজাস্ট (জামাত)",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = "উপরে দেখানো সময় ওয়াক্ত শুরুর। আপনার মসজিদের জামাত " +
+                    "অনুযায়ী প্রতিটি নামাজের জন্য মিনিট যোগ/বিয়োগ করুন — আজানের " +
+                    "সময়ও সেই অনুযায়ী বাজবে।",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onReset, enabled = !isWaqtStart) {
+                    Text("ওয়াক্ত শুরুর সময়")
+                }
+                TextButton(onClick = onPreset) { Text("জামাত অনুযায়ী") }
+            }
+
+            PrayerName.entries.forEach { prayer ->
+                TuneRow(
+                    prayer = prayer,
+                    time = times[prayer],
+                    offset = state.tuneMinutes[prayer] ?: 0,
+                    onCommit = { onSetTune(prayer, it) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TuneRow(
+    prayer: PrayerName,
+    time: LocalTime?,
+    offset: Int,
+    onCommit: (Int) -> Unit,
+) {
+    var sliderValue by remember(prayer) { mutableFloatStateOf(offset.toFloat()) }
+    // Re-sync when the committed offset changes from outside (preset / reset).
+    LaunchedEffect(offset) { sliderValue = offset.toFloat() }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = prayer.banglaName,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = offsetLabel(offset),
+                style = MaterialTheme.typography.labelMedium,
+                color = Gold,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = time?.format(CLOCK)?.asBanglaDigits() ?: "—",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Slider(
+            value = sliderValue,
+            onValueChange = { sliderValue = it },
+            onValueChangeFinished = { onCommit(sliderValue.roundToInt()) },
+            valueRange = PrayerTuner.MIN_OFFSET.toFloat()..PrayerTuner.MAX_OFFSET.toFloat(),
+            steps = (PrayerTuner.MAX_OFFSET - PrayerTuner.MIN_OFFSET) / PrayerTuner.STEP - 1,
+        )
+    }
+}
+
+/** "+২০মি" / "−৫মি" / "০মি" for an offset in minutes, in Bengali digits. */
+private fun offsetLabel(minutes: Int): String {
+    val sign = when {
+        minutes > 0 -> "+"
+        minutes < 0 -> "−"
+        else -> ""
+    }
+    return "$sign${kotlin.math.abs(minutes).toString().asBanglaDigits()} মিনিট"
 }
 
 @Composable

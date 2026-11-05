@@ -16,6 +16,7 @@ import com.hafeziquran.app.data.model.PrayerDay
 import com.hafeziquran.app.data.model.PrayerLocation
 import com.hafeziquran.app.data.model.PrayerName
 import com.hafeziquran.app.data.preferences.PrayerPreferences
+import com.hafeziquran.app.domain.prayer.PrayerTuner
 import com.hafeziquran.app.domain.repository.PrayerTimesRepository
 import com.hafeziquran.app.prayer.AdhanScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -49,6 +50,7 @@ data class PrayerTimesUiState(
     val audioUris: Map<PrayerName, String?> = emptyMap(),
     val sehriAlarmEnabled: Boolean = false,
     val iftarAlarmEnabled: Boolean = false,
+    val tuneMinutes: Map<PrayerName, Int> = emptyMap(),
     val displayedMonth: YearMonth = YearMonth.now(),
     val monthDays: List<HijriCalendarDay> = emptyList(),
     val canScheduleExact: Boolean = true,
@@ -66,6 +68,11 @@ class PrayerTimesViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(PrayerTimesUiState())
     val state: StateFlow<PrayerTimesUiState> = _state.asStateFlow()
+
+    // Raw (unturned) values straight from the repository. Tune changes only shift
+    // these in memory, so no network call is needed to preview a new offset.
+    private var rawToday: PrayerDay? = null
+    private var rawMonth: List<HijriCalendarDay> = emptyList()
 
     init {
         _state.update { it.copy(canScheduleExact = scheduler.canScheduleExact()) }
@@ -87,7 +94,10 @@ class PrayerTimesViewModel @Inject constructor(
                 preferences.allAudioUris,
                 preferences.sehriAlarmEnabled,
                 preferences.iftarAlarmEnabled,
-            ) { enabled, uris, sehri, iftar -> Settings(enabled, uris, sehri, iftar) }
+                preferences.allTuneMinutes,
+            ) { enabled, uris, sehri, iftar, tune ->
+                Settings(enabled, uris, sehri, iftar, tune)
+            }
                 .collect { settings ->
                     _state.update {
                         it.copy(
@@ -95,8 +105,11 @@ class PrayerTimesViewModel @Inject constructor(
                             audioUris = settings.audioUris,
                             sehriAlarmEnabled = settings.sehriAlarmEnabled,
                             iftarAlarmEnabled = settings.iftarAlarmEnabled,
+                            tuneMinutes = settings.tuneMinutes,
                         )
                     }
+                    // Re-render the visible times with the new offsets.
+                    publishTimes()
                 }
         }
     }
@@ -128,6 +141,8 @@ class PrayerTimesViewModel @Inject constructor(
         // Clearing the location returns the screen to district/GPS setup.
         viewModelScope.launch {
             preferences.clearLocation()
+            rawToday = null
+            rawMonth = emptyList()
             _state.update { it.copy(today = null, hijri = null, monthDays = emptyList()) }
         }
     }
@@ -161,6 +176,27 @@ class PrayerTimesViewModel @Inject constructor(
         }
     }
 
+    fun setTuneMinutes(prayer: PrayerName, minutes: Int) {
+        viewModelScope.launch {
+            preferences.setTuneMinutes(prayer, minutes)
+            scheduler.rescheduleAll()
+        }
+    }
+
+    fun applyJamaatPreset() {
+        viewModelScope.launch {
+            preferences.setAllTuneMinutes(PrayerTuner.JAMAAT_PRESET)
+            scheduler.rescheduleAll()
+        }
+    }
+
+    fun resetTune() {
+        viewModelScope.launch {
+            preferences.setAllTuneMinutes(PrayerTuner.WAQT_START)
+            scheduler.rescheduleAll()
+        }
+    }
+
     fun changeMonth(offset: Long) {
         val month = _state.value.displayedMonth.plusMonths(offset)
         val location = _state.value.location ?: return
@@ -169,7 +205,9 @@ class PrayerTimesViewModel @Inject constructor(
             val days = withContext(Dispatchers.IO) {
                 repository.getMonth(month.year, month.monthValue, location)
             }
-            _state.update { it.copy(monthDays = days, monthLoading = false) }
+            rawMonth = days
+            _state.update { it.copy(monthLoading = false) }
+            publishTimes()
         }
     }
 
@@ -198,13 +236,11 @@ class PrayerTimesViewModel @Inject constructor(
         val days = withContext(Dispatchers.IO) {
             repository.getMonth(month.year, month.monthValue, location, force)
         }
+        rawToday = day
+        rawMonth = days
         _state.update {
             it.copy(
                 loading = false,
-                today = day,
-                hijri = day?.hijri,
-                stale = day?.stale == true,
-                monthDays = days,
                 displayedMonth = month,
                 error = if (day == null) {
                     "নামাজের সময় আনতে পারা যায়নি। ইন্টারনেট সংযোগ দেখুন।"
@@ -213,7 +249,23 @@ class PrayerTimesViewModel @Inject constructor(
                 },
             )
         }
+        publishTimes()
         withContext(Dispatchers.IO) { scheduler.rescheduleAll() }
+    }
+
+    /** Recomputes the displayed times from the raw days and the current tune. */
+    private fun publishTimes() {
+        val tune = _state.value.tuneMinutes
+        val today = rawToday?.let { PrayerTuner.apply(it, tune) }
+        val month = rawMonth.map { PrayerTuner.apply(it, tune) }
+        _state.update {
+            it.copy(
+                today = today,
+                hijri = rawToday?.hijri,
+                stale = rawToday?.stale == true,
+                monthDays = month,
+            )
+        }
     }
 
     private suspend fun findGpsLocation(): Location? {
@@ -289,6 +341,7 @@ class PrayerTimesViewModel @Inject constructor(
         val audioUris: Map<PrayerName, String?>,
         val sehriAlarmEnabled: Boolean,
         val iftarAlarmEnabled: Boolean,
+        val tuneMinutes: Map<PrayerName, Int>,
     )
 
     private companion object {

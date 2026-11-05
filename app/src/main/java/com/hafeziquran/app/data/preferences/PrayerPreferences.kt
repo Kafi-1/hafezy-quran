@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.hafeziquran.app.data.model.PrayerLocation
@@ -29,6 +30,8 @@ data class PrayerSettingsSnapshot(
     val audioUris: Map<PrayerName, String?>,
     val sehriAlarmEnabled: Boolean,
     val iftarAlarmEnabled: Boolean,
+    /** Per-prayer jamaat shift in minutes applied on top of the AlAdhan times. */
+    val tuneMinutes: Map<PrayerName, Int>,
 )
 
 /**
@@ -54,6 +57,9 @@ class PrayerPreferences @Inject constructor(
 
     private fun audioKey(prayer: PrayerName) =
         stringPreferencesKey("adhan_audio_${prayer.name}")
+
+    private fun tuneKey(prayer: PrayerName) =
+        intPreferencesKey("tune_minutes_${prayer.name}")
 
     val location: Flow<PrayerLocation?> = context.prayerDataStore.data.map { prefs ->
         val name = prefs[Keys.LOCATION_NAME]
@@ -82,6 +88,10 @@ class PrayerPreferences @Inject constructor(
         PrayerName.entries.associateWith { prefs[audioKey(it)] }
     }
 
+    val allTuneMinutes: Flow<Map<PrayerName, Int>> = context.prayerDataStore.data.map { prefs ->
+        PrayerName.entries.associateWith { prefs[tuneKey(it)] ?: 0 }
+    }
+
     val sehriAlarmEnabled: Flow<Boolean> = context.prayerDataStore.data.map {
         it[Keys.SEHRI_ALARM] ?: false
     }
@@ -108,6 +118,7 @@ class PrayerPreferences @Inject constructor(
             audioUris = PrayerName.entries.associateWith { prefs[audioKey(it)] },
             sehriAlarmEnabled = prefs[Keys.SEHRI_ALARM] ?: false,
             iftarAlarmEnabled = prefs[Keys.IFTAR_ALARM] ?: false,
+            tuneMinutes = PrayerName.entries.associateWith { prefs[tuneKey(it)] ?: 0 },
         )
     }
 
@@ -134,6 +145,17 @@ class PrayerPreferences @Inject constructor(
     suspend fun setAdhanAudioUri(prayer: PrayerName, uri: String?) {
         context.prayerDataStore.edit { prefs ->
             if (uri == null) prefs.remove(audioKey(prayer)) else prefs[audioKey(prayer)] = uri
+        }
+    }
+
+    suspend fun setTuneMinutes(prayer: PrayerName, minutes: Int) {
+        context.prayerDataStore.edit { it[tuneKey(prayer)] = minutes }
+    }
+
+    /** Applies one offset per prayer at once (used by the preset / reset buttons). */
+    suspend fun setAllTuneMinutes(offsets: Map<PrayerName, Int>) {
+        context.prayerDataStore.edit { prefs ->
+            offsets.forEach { (prayer, minutes) -> prefs[tuneKey(prayer)] = minutes }
         }
     }
 

@@ -90,7 +90,9 @@ fun VideoPlayerScreen(
     val id = remember(youtubeId) { normalizeYouTubeId(youtubeId) }
 
     var isFullscreen by remember { mutableStateOf(false) }
-    var strategy by remember { mutableIntStateOf(LoadStrategy.DIRECT.ordinal) }
+    // Start on IFRAME: it is the strategy that reliably sends the Referer YouTube's
+    // embed needs. A main-frame failure advances to DIRECT, then to the error card.
+    var strategy by remember { mutableIntStateOf(LoadStrategy.IFRAME.ordinal) }
     var failed by remember { mutableStateOf(false) }
 
     val chromeClient = remember {
@@ -218,9 +220,12 @@ private fun YouTubeEmbed(
         factory = { context ->
             WebView(context).apply {
                 setBackgroundColor(AndroidColor.BLACK)
-                // A software layer on the WebView is a classic cause of a black
-                // video surface under Compose, so pin it to hardware.
-                setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                // Keep the default layer type on purpose. Forcing
+                // LAYER_TYPE_HARDWARE makes the WebView composite its contents into
+                // an offscreen layer, and on many devices the YouTube player then
+                // renders black while the audio keeps playing. Video needs the
+                // *window* to be hardware accelerated (see AndroidManifest), not an
+                // explicit layer on the view itself.
 
                 // Lets chrome://inspect see the embed on debug builds — the only
                 // way to read YouTube's own console errors on a device.

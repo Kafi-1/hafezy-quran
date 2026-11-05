@@ -9,6 +9,7 @@ import com.hafeziquran.app.data.model.PrayerDay
 import com.hafeziquran.app.data.model.PrayerName
 import com.hafeziquran.app.data.preferences.PrayerPreferences
 import com.hafeziquran.app.data.preferences.PrayerSettingsSnapshot
+import com.hafeziquran.app.domain.prayer.PrayerTuner
 import com.hafeziquran.app.domain.repository.PrayerTimesRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDate
@@ -51,11 +52,15 @@ class AdhanScheduler @Inject constructor(
 
         val now = LocalDateTime.now()
         val today = now.toLocalDate()
+        val tune = snapshot.tuneMinutes
 
         // Pull both days up-front so the per-prayer loop makes no further IO.
+        // Alarms fire at the tuned (jamaat) time, not the raw waqt start.
         val todayDay = repository.getDay(today, location)?.validFor(today)
+            ?.let { PrayerTuner.apply(it, tune) }
         val tomorrowDay = repository.getDay(today.plusDays(1), location)
             ?.validFor(today.plusDays(1))
+            ?.let { PrayerTuner.apply(it, tune) }
 
         PrayerName.entries.forEach { prayer ->
             if (snapshot.adhanEnabled[prayer] == false) {

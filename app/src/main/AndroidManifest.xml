@@ -59,6 +59,7 @@
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:exported="false"
+            android:hardwareAccelerated="true"
             android:theme="@style/Theme.HafeziQuran"
             android:windowSoftInputMode="adjustResize" />
 
