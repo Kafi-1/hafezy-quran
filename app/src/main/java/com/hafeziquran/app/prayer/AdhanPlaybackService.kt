@@ -9,7 +9,6 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.net.Uri
 import android.os.IBinder
 import android.os.PowerManager
@@ -25,8 +24,8 @@ import com.hafeziquran.app.data.model.PrayerName
  * with the screen locked or the app swiped away.
  *
  * The audio is whatever file the user picked for that prayer (persisted SAF
- * URI); if none is set the system alarm ringtone is used, so an alarm is never
- * silent.
+ * URI); if none is set the bundled [R.raw.azan] recording is played, so a prayer
+ * is never silent and users hear a real azan out of the box.
  */
 class AdhanPlaybackService : Service() {
 
@@ -58,7 +57,7 @@ class AdhanPlaybackService : Service() {
     private fun play(prayer: PrayerName, uriString: String?) {
         stopPlayback()
         val uri = uriString?.let(Uri::parse)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            ?: Uri.parse("android.resource://$packageName/${R.raw.azan}")
         player = try {
             MediaPlayer().apply {
                 setAudioAttributes(
