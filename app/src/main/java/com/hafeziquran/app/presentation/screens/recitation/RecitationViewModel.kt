@@ -13,13 +13,13 @@ import com.hafeziquran.app.data.recitation.AyahTranscription
 import com.hafeziquran.app.data.recitation.PageAyah
 import com.hafeziquran.app.data.recitation.QuranRecitationChecker
 import com.hafeziquran.app.data.recitation.RecitationMetrics
-import com.hafeziquran.app.data.recitation.WhisperWorker
+import com.hafeziquran.app.data.recitation.SobokAsrWorker
 import com.hafeziquran.app.data.recitation.WordMatchStatus
+import com.hafeziquran.app.data.asr.FastConformerEngine
 import com.hafeziquran.app.data.repository.QuranIndexRepository
 import com.hafeziquran.app.data.repository.QuranPageRepository
 import com.hafeziquran.app.data.repository.ReadingPositionRepository
 import com.hafeziquran.app.data.repository.SobokModelRepository
-import com.hafeziquran.app.data.whisper.WhisperEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -71,7 +71,7 @@ data class RecitationUiState(
  *
  * Recording and inference are decoupled by two channels: the recorder writes to
  * an unbounded channel (it must never block the microphone) and a router coroutine
- * moves completed segments into the bounded [AyahProcessingQueue]. [WhisperWorker]
+ * moves completed segments into the bounded [AyahProcessingQueue]. [SobokAsrWorker]
  * is the only consumer of that queue, so inference is strictly serial.
  */
 @HiltViewModel
@@ -80,9 +80,9 @@ class RecitationViewModel @Inject constructor(
     private val pageRepository: QuranPageRepository,
     private val readingPositionRepository: ReadingPositionRepository,
     private val modelRepository: SobokModelRepository,
-    private val whisperEngine: WhisperEngine,
+    private val engine: FastConformerEngine,
     private val recorder: AyahSegmentRecorder,
-    private val whisperWorker: WhisperWorker,
+    private val asrWorker: SobokAsrWorker,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -240,10 +240,10 @@ class RecitationViewModel @Inject constructor(
         val session = sessionCounter.incrementAndGet()
         activeSession = session
 
-        workerJob = whisperWorker.start(
+        workerJob = asrWorker.start(
             scope = viewModelScope,
             queue = sessionQueue,
-            modelPath = { modelRepository.modelPath() },
+            files = { modelRepository.files() },
             onDequeued = { segment -> if (session == activeSession) onSegmentDequeued(segment) },
             onTranscribed = { segment, transcription ->
                 if (session == activeSession) onSegmentTranscribed(segment, transcription)
@@ -468,12 +468,12 @@ class RecitationViewModel @Inject constructor(
     }
 
     private fun preloadModelIfNeeded() {
-        if (whisperEngine.isReady) return
+        if (engine.isReady) return
         viewModelScope.launch {
-            // Resolving the model path stats the file; keep it off the main thread.
-            val modelPath = withContext(Dispatchers.IO) { modelRepository.modelPath() }
+            // Resolving the file paths stats them; keep that off the main thread.
+            val files = withContext(Dispatchers.IO) { modelRepository.files() }
                 ?: return@launch
-            whisperEngine.preload(modelPath).onSuccess {
+            engine.preload(files.modelPath, files.vocabPath).onSuccess {
                 _state.update { it.copy(modelReady = true) }
             }
         }
@@ -568,7 +568,7 @@ class RecitationViewModel @Inject constructor(
                 pageFinished = pageFinished,
                 metrics = current.metrics.copy(
                     segmentCount = current.metrics.segmentCount + 1,
-                    modelLoadMs = whisperEngine.lastLoadTimeMs,
+                    modelLoadMs = engine.lastLoadTimeMs,
                     lastInferenceMs = transcription.inferenceMs,
                     lastQueueWaitMs = transcription.queueWaitMs,
                     lastTotalMs = transcription.queueWaitMs + transcription.inferenceMs,

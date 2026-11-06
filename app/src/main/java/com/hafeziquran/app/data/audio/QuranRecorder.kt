@@ -9,7 +9,7 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
- * Records mono 16 kHz PCM-16, the only format whisper.cpp accepts.
+ * Records mono 16 kHz PCM-16, the only format the FastConformer model accepts.
  *
  * [record] blocks on the IO dispatcher until [stop] is called or [maxDurationMs]
  * elapses. [stop] is thread-safe so the UI can toggle recording from the main
@@ -98,6 +98,6 @@ class QuranRecorder @Inject constructor() {
     }
 }
 
-/** Converts PCM-16 samples into the normalised float range Whisper expects. */
-fun ShortArray.toWhisperSamples(): FloatArray =
+/** Converts PCM-16 samples into the normalised float range the ASR model expects. */
+fun ShortArray.toAsrSamples(): FloatArray =
     FloatArray(size) { this[it] / 32768f }

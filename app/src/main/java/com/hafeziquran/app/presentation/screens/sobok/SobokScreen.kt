@@ -106,7 +106,7 @@ import kotlin.math.roundToInt
 
 /**
  * Sobok: pick a surah + ayah, recite, and get word-level feedback from the
- * offline Whisper model. If the optional model has not been downloaded yet this
+ * offline ASR model. If the optional model has not been downloaded yet this
  * screen first shows a one-time download gate.
  */
 @Composable
@@ -321,7 +321,7 @@ private fun ModelGateContent(
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = "প্রায় ৭৮ এমবি — ডাউনলোডের পর ইন্টারনেট ছাড়াই কাজ করবে",
+                        text = "প্রায় ৮৪ এমবি — ডাউনলোডের পর ইন্টারনেট ছাড়াই কাজ করবে",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

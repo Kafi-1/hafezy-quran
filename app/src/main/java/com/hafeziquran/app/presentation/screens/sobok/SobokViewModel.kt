@@ -5,14 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.hafeziquran.app.core.util.AlignmentResult
 import com.hafeziquran.app.core.util.Resource
 import com.hafeziquran.app.core.util.alignAyah
+import com.hafeziquran.app.data.asr.FastConformerEngine
 import com.hafeziquran.app.data.audio.QuranRecorder
-import com.hafeziquran.app.data.audio.toWhisperSamples
+import com.hafeziquran.app.data.audio.toAsrSamples
 import com.hafeziquran.app.data.download.DownloadStatus
 import com.hafeziquran.app.data.model.Surah
 import com.hafeziquran.app.data.repository.QuranIndexRepository
 import com.hafeziquran.app.data.repository.QuranTextRepository
 import com.hafeziquran.app.data.repository.SobokModelRepository
-import com.hafeziquran.app.data.whisper.WhisperEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -58,7 +58,7 @@ class SobokViewModel @Inject constructor(
     private val indexRepository: QuranIndexRepository,
     private val textRepository: QuranTextRepository,
     private val modelRepository: SobokModelRepository,
-    private val whisperEngine: WhisperEngine,
+    private val engine: FastConformerEngine,
 ) : ViewModel() {
 
     private val recorder = QuranRecorder()
@@ -236,8 +236,8 @@ class SobokViewModel @Inject constructor(
                     )
                 }
 
-                val modelPath = modelRepository.modelPath()
-                if (modelPath == null) {
+                val files = modelRepository.files()
+                if (files == null) {
                     _state.update {
                         it.copy(
                             phase = SobokPhase.ERROR,
@@ -247,7 +247,7 @@ class SobokViewModel @Inject constructor(
                     return@launch
                 }
 
-                whisperEngine.transcribe(modelPath, samples.toWhisperSamples()).fold(
+                engine.transcribe(files.modelPath, files.vocabPath, samples.toAsrSamples()).fold(
                     onSuccess = { recognized ->
                         if (recognized.isBlank()) {
                             _state.update {

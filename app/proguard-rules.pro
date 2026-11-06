@@ -21,12 +21,10 @@
 # Pdfium uses reflection for optional features.
 -dontwarn io.legere.pdfiumandroid.**
 
-# Whisper JNI: native method names are bound to the Kotlin class/package at
-# link time, so R8 must neither rename the bridge nor strip its methods.
--keep class com.hafeziquran.app.data.whisper.WhisperBridge { *; }
--keepclasseswithmembernames class * {
-    native <methods>;
-}
+# ONNX Runtime: the Java API loads its native library and resolves JNI bindings by
+# class name, so R8 must neither rename the bindings nor strip them in release.
+-keep class ai.onnxruntime.** { *; }
+-dontwarn ai.onnxruntime.**
 
 # Retrofit builds its implementation through a dynamic proxy and reads the HTTP
 # annotations at runtime, so the service interface and its signatures must survive

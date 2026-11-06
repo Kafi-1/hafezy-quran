@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Bounded FIFO between the recorder and the single Whisper worker.
+ * Bounded FIFO between the recorder and the single ASR worker.
  *
  * A five-second ayah can take longer to transcribe than to recite, so the queue
  * is deliberately small: four pending segments keeps worst-case memory around

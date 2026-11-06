@@ -18,7 +18,7 @@ import kotlin.coroutines.coroutineContext
 /**
  * Continuous microphone capture with a small energy-based VAD.
  *
- * The recorder never waits for Whisper: completed segments are handed to the
+ * The recorder never waits for the recognizer: completed segments are handed to the
  * caller's channel with a non-blocking `trySend`, so the capture loop keeps
  * running while the queue drains in the background. Speech boundaries follow a
  * hysteresis rule (a higher threshold to start, a lower one to stay in speech),

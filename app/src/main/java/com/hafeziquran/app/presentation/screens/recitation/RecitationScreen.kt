@@ -113,7 +113,7 @@ import kotlin.math.sin
  *
  * The page text is always readable; ayah-level state only paints the background,
  * a small badge, and (after processing) the words themselves. Recording is never
- * paused or blocked by queue/Whisper work.
+ * paused or blocked by queue/ASR work.
  */
 @Composable
 fun RecitationScreen(
@@ -928,13 +928,13 @@ private fun ModelGate(
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "লাইভ সবকের জন্য অফলাইন Whisper মডেল দরকার",
+            text = "লাইভ সবকের জন্য অফলাইন ভয়েস মডেল দরকার",
             style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "একবার ডাউনলোড করলেই ইন্টারনেট ছাড়া আয়াত ধরে ধরে যাচাই করতে পারবেন। মডেলটি প্রায় ৭৫ MB।",
+            text = "একবার ডাউনলোড করলেই ইন্টারনেট ছাড়া আয়াত ধরে ধরে যাচাই করতে পারবেন। মডেলটি প্রায় ৮৪ MB।",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,

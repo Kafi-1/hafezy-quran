@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** Downloaded state of the optional Sobok Whisper model. */
+/** Downloaded state of the optional Sobok ASR model. */
 data class SobokModelState(
     val downloaded: Boolean = false,
     val sizeBytes: Long = 0L,

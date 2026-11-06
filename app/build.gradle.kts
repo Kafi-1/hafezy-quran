@@ -25,8 +25,6 @@ val keystoreProps = Properties().apply {
 android {
     namespace = "com.hafeziquran.app"
     compileSdk = 35
-    // Required by the vendored whisper.cpp / ggml CMake build.
-    ndkVersion = "27.0.12077973"
 
     defaultConfig {
         applicationId = "com.hafeziquran.app"
@@ -37,8 +35,9 @@ android {
 
         vectorDrawables { useSupportLibrary = true }
 
-        // Ship only the two ABIs real phones use. Pdfium's native libs for
-        // x86/x86_64 are ~5 MB each and only matter to emulators.
+        // Ship only the two ABIs real phones use. Pdfium and onnxruntime both
+        // bundle native libs for x86/x86_64 that only matter to emulators, and
+        // stripping them keeps several MB out of the APK.
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
@@ -70,13 +69,6 @@ android {
         debug {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("debug")
-            externalNativeBuild {
-                cmake {
-                    // Optimize the native whisper/ggml code even in debug so it is
-                    // usable for on-device testing (symbols kept, unlike Release).
-                    arguments += "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
-                }
-            }
         }
         release {
             isMinifyEnabled = true
@@ -85,12 +77,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            externalNativeBuild {
-                cmake {
-                    // Fully optimized native build for shipping.
-                    arguments += "-DCMAKE_BUILD_TYPE=Release"
-                }
-            }
             // Signed with the release key when available, else the debug key so the
             // APK is still installable for local smoke-testing.
             signingConfig = if (hasReleaseKeystore) {
@@ -113,13 +99,6 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
     }
 
     // The 13 MB mushaf PDF is already compressed; keep it uncompressed-in-APK-safe
@@ -197,4 +176,7 @@ dependencies {
     implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
+
+    // --- On-device ASR: FastConformer Quranic-Arabic model via ONNX Runtime ---
+    implementation(libs.onnxruntime.android)
 }

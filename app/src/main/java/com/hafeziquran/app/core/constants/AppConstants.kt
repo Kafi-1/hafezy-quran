@@ -46,33 +46,44 @@ object AppConstants {
     const val QURAN_TEXT_ASSET = "quran_uthmani.json"
 
     /**
-     * Optional Whisper model for the Sobok feature. Never bundled in the APK —
-     * downloaded on first use and kept in `filesDir`.
+     * Optional FastConformer Quranic-Arabic model for the Sobok feature. Never
+     * bundled in the APK — downloaded on first use and kept in `filesDir`.
      *
-     * The tiny multilingual model quantised to q8_0 (~42 MB) is used: it is
-     * several times faster and less than half the size of the older f16 tiny
-     * model, while still supporting Arabic via `language = "ar"`.
+     * `muhdur/tilawi-fastconformer-quran` is an NVIDIA NeMo FastConformer-CTC
+     * model fine-tuned on Quranic recitation, exported as a single ONNX graph
+     * (preprocessor included) that runs offline through ONNX Runtime. License:
+     * CC-BY-4.0, so it is redistributable in a free app.
+     *
+     * Two files are needed: the graph itself, and the SentencePiece vocabulary
+     * used to turn the CTC output ids into Arabic text.
      */
     const val SOBOK_MODEL_URL =
-        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q8_0.bin"
+        "https://huggingface.co/muhdur/tilawi-fastconformer-quran/resolve/main/" +
+            "fastconformer_full_mixed.onnx"
+
+    const val SOBOK_VOCAB_URL =
+        "https://huggingface.co/muhdur/tilawi-fastconformer-quran/resolve/main/vocab.json"
 
     const val SOBOK_MODEL_DIR = "models"
-    const val SOBOK_MODEL_FILE = "ggml-tiny-q8_0.bin"
+    const val SOBOK_MODEL_FILE = "tilawi_fastconformer.onnx"
+    const val SOBOK_VOCAB_FILE = "tilawi_vocab.json"
 
     /**
-     * Superseded model files, deleted once the q8_0 tiny model is validated:
-     * the old f16 tiny model, and the even older base model. A user who has one
-     * of these sees Sobok ask for a (much smaller) re-download — the new file has
-     * a different name, so the old one is never mistaken for the current model.
+     * Superseded model files from the old whisper.cpp era, deleted once the
+     * FastConformer model is validated. The new files have different names, so an
+     * obsolete ggml model is never mistaken for the current one.
      */
-    val SOBOK_LEGACY_MODEL_FILES = listOf("ggml-tiny.bin", "ggml-model-q8_0.bin")
+    val SOBOK_LEGACY_MODEL_FILES =
+        listOf("ggml-tiny.bin", "ggml-model-q8_0.bin", "ggml-tiny-q8_0.bin")
 
     /**
-     * Lower bound for `ggml-tiny-q8_0.bin` (~42 MB, real size ~41.5 MiB). Keep this
-     * close to the real size: the GGML magic-byte check only inspects the first
-     * four bytes, so it cannot detect a stream that ends early — the size floor is
-     * the only guard against a truncated download. A loose fraction would let a
-     * half-written file through, and whisper.cpp would then fail to load it.
+     * Lower bound for the ONNX graph (real size ~84 MiB). The download itself is
+     * atomic (`.part` renamed on completion), so this floor only guards against a
+     * server that truncates the stream with a 200 — a loose fraction would let a
+     * half-written graph through and ONNX Runtime would then fail to load it.
      */
-    const val SOBOK_MODEL_MIN_BYTES = 40L * 1024L * 1024L
+    const val SOBOK_MODEL_MIN_BYTES = 80L * 1024L * 1024L
+
+    /** Lower bound for `vocab.json` (real size ~21 KB). */
+    const val SOBOK_VOCAB_MIN_BYTES = 4L * 1024L
 }

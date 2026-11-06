@@ -3,7 +3,7 @@ package com.hafeziquran.app.data.recitation
 /**
  * One VAD-delimited piece of recitation captured straight from the microphone.
  *
- * [pcm] is mono 16 kHz PCM-16 — the format whisper.cpp consumes. Segments are
+ * [pcm] is mono 16 kHz PCM-16 — the format the ASR model consumes. Segments are
  * deliberately plain objects with no behaviour: the recorder owns capture, the
  * queue owns buffering, and the worker owns inference.
  */
@@ -21,7 +21,7 @@ enum class WordMatchStatus { CORRECT, WRONG, MISSING, EXTRA }
  * A single word shown to the user.
  *
  * [expectedWord] is the Uthmani token from the mushaf (empty for [WordMatchStatus.EXTRA]);
- * [spokenWord] is what Whisper heard (empty for [WordMatchStatus.MISSING]);
+ * [spokenWord] is what the recognizer heard (empty for [WordMatchStatus.MISSING]);
  * [similarityScore] is 0..1 character similarity after Arabic normalisation.
  */
 data class WordStatus(
@@ -53,7 +53,7 @@ data class AyahCheckResult(
         }
 }
 
-/** Output of the single Whisper worker. */
+/** Output of the single ASR worker. */
 data class AyahTranscription(
     val segmentId: Long,
     val arabicText: String,

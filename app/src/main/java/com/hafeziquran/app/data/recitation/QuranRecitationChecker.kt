@@ -7,7 +7,7 @@ import com.hafeziquran.app.core.util.normalizedWordSimilarity
 import kotlin.math.abs
 
 /**
- * Maps Whisper transcripts onto the ayahs of the open page.
+ * Maps recognizer transcripts onto the ayahs of the open page.
  *
  * The checker is stateful on purpose: [nextAyahIndex] starts at the top of the
  * page and only ever moves forward, so a segment is aligned against a small

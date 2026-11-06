@@ -3,8 +3,8 @@ package com.hafeziquran.app.core.util
 /**
  * Arabic word comparison used by the offline Sobok checker.
  *
- * Whisper emits modern, mostly undiacritised Arabic while the mushaf text uses
- * Uthmani orthography with tashkeel and waqf marks. Both sides are therefore
+ * The recognizer's Arabic spelling differs from the mushaf's Uthmani orthography
+ * (tashkeel, waqf marks and the occasional spelling). Both sides are therefore
  * normalised before a word-level alignment is computed, and the *original*
  * tokens are what the UI colours.
  */
@@ -38,7 +38,7 @@ fun splitAyahWords(text: String): List<String> =
  *
  * The mushaf often writes a long /aa/ as a dagger alif (superscript alef,
  * U+0670) on the preceding consonant instead of a full alef — `ٱلصِّرَٰطَ`,
- * `قَٰلَ` — while Whisper emits the modern spelling with a full alef. A dagger
+ * `قَٰلَ` — while the recognizer emits the modern spelling with a full alef. A dagger
  * alif is therefore folded to `ا`. The one exception is a dagger alif that only
  * restates an alef or alef maqsura already present (`عَلَىٰ`, `إِلَىٰ`): there it
  * adds no letter and is dropped, so `على` stays `علي` rather than drifting to
@@ -201,8 +201,8 @@ private fun levenshtein(a: String, b: String): Int {
 }
 
 /**
- * A word is accepted as correct at 0.6 character similarity. Whisper's output
- * drops the mushaf's tashkeel and waqf marks, so after normalisation a correctly
+ * A word is accepted as correct at 0.6 character similarity. The recognizer's
+ * output drops the mushaf's tashkeel and waqf marks, so after normalisation a correctly
  * recited word can still differ by a letter or two — a stricter bar painted those
  * green-flagged words red and made the checker feel wrong. 0.6 forgives that
  * without letting genuinely different words match.

@@ -26,6 +26,7 @@ coroutinesPlayServices = "1.9.0"
 coil = "2.7.0"
 retrofit = "2.11.0"
 okhttp = "4.12.0"
+onnxruntime = "1.22.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -80,6 +81,12 @@ retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = 
 retrofit-kotlinx-serialization = { group = "com.squareup.retrofit2", name = "converter-kotlinx-serialization", version.ref = "retrofit" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
+
+# --- On-device speech recognition (ONNX Runtime) ---
+# Runs the FastConformer Quranic-Arabic model (Sobok / Live Sobok) on CPU. Ships
+# the native .so files for every ABI, so the vendored whisper.cpp + NDK build is
+# gone entirely.
+onnxruntime-android = { group = "com.microsoft.onnxruntime", name = "onnxruntime-android", version.ref = "onnxruntime" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
