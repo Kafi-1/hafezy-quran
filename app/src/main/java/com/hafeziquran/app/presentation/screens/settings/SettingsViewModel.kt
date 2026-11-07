@@ -10,10 +10,12 @@ import com.hafeziquran.app.data.preferences.UserPreferences
 import com.hafeziquran.app.data.repository.SobokModelRepository
 import com.hafeziquran.app.presentation.theme.AppColorTheme
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -49,7 +51,17 @@ class SettingsViewModel @Inject constructor(
     val versionName: String = BuildConfig.VERSION_NAME
 
     init {
-        refreshSobokModel()
+        viewModelScope.launch {
+            sobokModelRepository.downloadState
+                .map {
+                    SobokModelState(
+                        downloaded = sobokModelRepository.isDownloaded(),
+                        sizeBytes = sobokModelRepository.sizeBytes(),
+                    )
+                }
+                .flowOn(Dispatchers.IO)
+                .collect { _sobokModel.value = it }
+        }
     }
 
     fun setThemeMode(mode: ThemeMode) {
@@ -63,16 +75,16 @@ class SettingsViewModel @Inject constructor(
     fun deleteSobokModel() {
         viewModelScope.launch {
             sobokModelRepository.delete()
-            refreshSobokModel()
+        }
+    }
+
+    /** Deletes the current files and fetches a fresh copy (repairs a bad model). */
+    fun redownloadSobokModel() {
+        viewModelScope.launch {
+            sobokModelRepository.delete()
+            sobokModelRepository.startDownload()
         }
     }
 
     fun signOut() = authRepository.signOut()
-
-    private fun refreshSobokModel() {
-        _sobokModel.value = SobokModelState(
-            downloaded = sobokModelRepository.isDownloaded(),
-            sizeBytes = sobokModelRepository.sizeBytes(),
-        )
-    }
 }

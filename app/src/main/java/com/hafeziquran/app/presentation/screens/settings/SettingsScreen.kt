@@ -118,6 +118,7 @@ fun SettingsScreen(
             SobokModelRow(
                 downloaded = sobokModel.downloaded,
                 sizeBytes = sobokModel.sizeBytes,
+                onRedownload = viewModel::redownloadSobokModel,
                 onDelete = { confirmDeleteModel = true },
             )
 
@@ -206,6 +207,7 @@ private fun SectionTitle(text: String) {
 private fun SobokModelRow(
     downloaded: Boolean,
     sizeBytes: Long,
+    onRedownload: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -238,6 +240,9 @@ private fun SobokModelRow(
                 )
             }
             if (downloaded) {
+                TextButton(onClick = onRedownload) {
+                    Text("আবার ডাউনলোড", style = MaterialTheme.typography.labelSmall)
+                }
                 TextButton(onClick = onDelete) {
                     Text("ডিলিট", color = MaterialTheme.colorScheme.error)
                 }

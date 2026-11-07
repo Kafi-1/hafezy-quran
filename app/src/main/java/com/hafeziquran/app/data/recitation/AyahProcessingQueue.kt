@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger
  *
  * A five-second ayah can take longer to transcribe than to recite, so the queue
  * is deliberately small: four pending segments keeps worst-case memory around
- * 4 × 20 s × 32 KB/s ≈ 2.5 MB, and the UI shows a "Processing..." badge instead of
+ * 4 × 15 s × 32 KB/s ≈ 1.9 MB, and the UI shows a "Processing..." badge instead of
  * letting the backlog grow without bound. [enqueue] never suspends — dropping a
  * segment is better than stalling the microphone.
  */

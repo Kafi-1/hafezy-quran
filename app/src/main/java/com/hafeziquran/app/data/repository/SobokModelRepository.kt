@@ -3,6 +3,7 @@ package com.hafeziquran.app.data.repository
 import android.content.Context
 import com.hafeziquran.app.core.constants.AppConstants
 import com.hafeziquran.app.data.asr.AsrModelFiles
+import com.hafeziquran.app.data.asr.AsrModelValidator
 import com.hafeziquran.app.data.asr.FastConformerEngine
 import com.hafeziquran.app.data.download.DownloadManager
 import com.hafeziquran.app.data.download.DownloadStatus
@@ -38,9 +39,21 @@ class SobokModelRepository @Inject constructor(
     private val legacyFiles: List<File> =
         AppConstants.SOBOK_LEGACY_MODEL_FILES.map { File(modelsDir, it) }
 
+    /**
+     * Header checks read a few bytes, but `isDownloaded()` runs on every download
+     * progress tick and `files()` runs for every segment. Cache the verdict keyed
+     * by length + mtime so an unchanged file is only inspected once.
+     */
+    private val validationLock = Any()
+    private var modelStamp: FileStamp? = null
+    private var modelStampValid = false
+    private var vocabStamp: FileStamp? = null
+    private var vocabStampValid = false
+
     init {
         modelsDir.mkdirs()
-        // Valid files left from a previous session count as downloaded.
+        // Files left from a previous session count as downloaded until the
+        // structural check below rejects them.
         downloadManager.markCompletedIfPresent(KEY_MODEL, modelFile)
         downloadManager.markCompletedIfPresent(KEY_VOCAB, vocabFile)
         // If the current files are already in place, reclaim the old ones' disk.
@@ -64,12 +77,12 @@ class SobokModelRepository @Inject constructor(
         downloadManager.cancel(KEY_VOCAB)
     }
 
-    /** True only when both files are present and large enough to be complete. */
-    fun isDownloaded(): Boolean =
-        modelFile.exists() &&
-            modelFile.length() >= AppConstants.SOBOK_MODEL_MIN_BYTES &&
-            vocabFile.exists() &&
-            vocabFile.length() >= AppConstants.SOBOK_VOCAB_MIN_BYTES
+    /**
+     * True only when both files are present, large enough, and structurally look
+     * like the files we expect. A truncated graph must never be advertised as
+     * usable: ONNX Runtime would abort on it in native code.
+     */
+    fun isDownloaded(): Boolean = isModelValid() && isVocabValid()
 
     fun sizeBytes(): Long =
         (if (modelFile.exists()) modelFile.length() else 0L) +
@@ -106,6 +119,33 @@ class SobokModelRepository @Inject constructor(
         downloadManager.reset(KEY_MODEL)
         downloadManager.reset(KEY_VOCAB)
     }
+
+    private fun isModelValid(): Boolean {
+        val file = modelFile
+        val stamp = stampOf(file) ?: return false
+        synchronized(validationLock) {
+            if (stamp == modelStamp) return modelStampValid
+            val valid = AsrModelValidator.isValidModel(file, AppConstants.SOBOK_MODEL_MIN_BYTES)
+            modelStamp = stamp
+            modelStampValid = valid
+            return valid
+        }
+    }
+
+    private fun isVocabValid(): Boolean {
+        val file = vocabFile
+        val stamp = stampOf(file) ?: return false
+        synchronized(validationLock) {
+            if (stamp == vocabStamp) return vocabStampValid
+            val valid = AsrModelValidator.isValidVocab(file, AppConstants.SOBOK_VOCAB_MIN_BYTES)
+            vocabStamp = stamp
+            vocabStampValid = valid
+            return valid
+        }
+    }
+
+    private fun stampOf(file: File): FileStamp? =
+        if (file.isFile) FileStamp(file.length(), file.lastModified()) else null
 
     private fun removeFiles() {
         runCatching { modelFile.delete() }
@@ -151,6 +191,8 @@ class SobokModelRepository @Inject constructor(
         is DownloadStatus.Completed -> status.bytes
         else -> 0L
     }
+
+    private data class FileStamp(val length: Long, val modified: Long)
 
     private companion object {
         const val KEY_MODEL = "sobok_model"

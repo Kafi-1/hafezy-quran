@@ -504,7 +504,8 @@ private fun SobokContent(
             surah = state.selectedSurah,
             selectedAyah = state.selectedAyah,
             totalAyahs = state.totalAyahs,
-            enabled = state.phase != SobokPhase.RECORDING &&
+            enabled = state.phase != SobokPhase.PREPARING &&
+                state.phase != SobokPhase.RECORDING &&
                 state.phase != SobokPhase.PROCESSING,
             onPickSurah = { showSurahPicker = true },
             onPreviousAyah = onPreviousAyah,
@@ -814,9 +815,11 @@ private fun MicSection(
 ) {
     val recording = phase == SobokPhase.RECORDING
     val processing = phase == SobokPhase.PROCESSING
+    val preparing = phase == SobokPhase.PREPARING
 
     val status = when {
         !hasPermission -> "মাইক্রোফোনের অনুমতি দিন"
+        preparing -> "ভয়েস মডেল প্রস্তুত হচ্ছে..."
         recording -> "রেকর্ডিং হচ্ছে… থামাতে আবার চাপুন"
         processing -> "অফলাইনে প্রসেস হচ্ছে…"
         phase == SobokPhase.RESULT -> "ফলাফল দেখানো হয়েছে"
@@ -851,7 +854,7 @@ private fun MicSection(
 
             Surface(
                 onClick = onMicClick,
-                enabled = !processing,
+                enabled = !processing && !preparing,
                 shape = CircleShape,
                 color = if (recording) {
                     MaterialTheme.colorScheme.error
@@ -875,7 +878,7 @@ private fun MicSection(
         Spacer(Modifier.height(12.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (processing) {
+            if (processing || preparing) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(16.dp),
                     strokeWidth = 2.dp,

@@ -4,29 +4,38 @@ import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import ai.onnxruntime.TensorInfo
+import android.app.ActivityManager
+import android.content.Context
 import android.os.SystemClock
 import android.util.Log
+import com.hafeziquran.app.BuildConfig
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.nio.FloatBuffer
 import java.nio.LongBuffer
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * ONNX Runtime host for the FastConformer Quranic-Arabic model, replacing the
- * old whisper.cpp context. One [OrtSession] is kept for the whole process.
+ * ONNX Runtime host for the FastConformer Quranic-Arabic model.
  *
- * The exported graph bundles the NeMo preprocessor (mel filterbank + normalise),
- * so the only input is raw 16 kHz mono PCM in `[-1, 1]`. Inference and load are
- * serialised by a [Mutex] so a Settings-driven [release] can never free the
- * session mid-transcription.
+ * One [OrtSession] is kept for the whole process and guarded by a [Mutex], so a
+ * Settings-driven delete can never free the session mid-transcription.
+ *
+ * Native ONNX failures cannot be caught in Kotlin, so the engine refuses to enter
+ * the native loader when the file looks corrupt or the device is short on memory
+ * ([AsrModelValidator], [requireMemoryFor]). Everything after that is wrapped in
+ * `Result` so callers always get a Bangla-able failure instead of a process kill.
  */
 @Singleton
-class FastConformerEngine @Inject constructor() {
+class FastConformerEngine @Inject constructor(
+    @ApplicationContext private val context: Context,
+) {
 
     private val mutex = Mutex()
 
@@ -57,13 +66,22 @@ class FastConformerEngine @Inject constructor() {
      */
     suspend fun preload(modelPath: String, vocabPath: String): Result<Unit> =
         withContext(Dispatchers.Default) {
-            mutex.withLock {
-                runCatching {
-                    ensureLoaded(modelPath, vocabPath)
-                }
+            try {
+                mutex.withLock { ensureLoaded(modelPath, vocabPath) }
+                Result.success(Unit)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (throwable: Throwable) {
+                Log.e(TAG, "model preload failed", throwable)
+                Result.failure(throwable)
             }
         }
 
+    /**
+     * Transcribes one segment. Audio longer than [MAX_AUDIO_SECONDS] is truncated
+     * before inference: the graph has no length limit of its own, and a runaway
+     * segment would multiply the attention buffers until the process is killed.
+     */
     suspend fun transcribe(
         modelPath: String,
         vocabPath: String,
@@ -71,12 +89,14 @@ class FastConformerEngine @Inject constructor() {
     ): Result<String> = withContext(Dispatchers.Default) {
         mutex.withLock {
             try {
-                require(samples.isNotEmpty()) { "Empty audio" }
+                if (samples.isEmpty()) throw IllegalArgumentException("Empty audio")
+                val usable = limitAudio(samples)
                 ensureLoaded(modelPath, vocabPath)
-                Result.success(runInference(samples))
+                Result.success(runInference(usable))
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (throwable: Throwable) {
+                Log.e(TAG, "transcription failed", throwable)
                 Result.failure(throwable)
             }
         }
@@ -89,11 +109,23 @@ class FastConformerEngine @Inject constructor() {
     private fun ensureLoaded(modelPath: String, vocabPath: String) {
         val key = "$modelPath|$vocabPath"
         if (session != null && loadedKey == key) return
+
+        // Free the previous graph before measuring headroom for the next one.
         releaseLocked()
+
+        val modelFile = File(modelPath)
+        val vocabFile = File(vocabPath)
+        check(AsrModelValidator.isValidModel(modelFile, 1L)) {
+            "Model file is missing or corrupt"
+        }
+        check(AsrModelValidator.isValidVocab(vocabFile, 1L)) {
+            "Vocabulary file is missing or corrupt"
+        }
+        requireMemoryFor(modelFile)
 
         val startedAt = SystemClock.elapsedRealtime()
         val env = environment ?: OrtEnvironment.getEnvironment().also { environment = it }
-        val vocab = FastConformerVocab.load(java.io.File(vocabPath))
+        val vocab = FastConformerVocab.load(vocabFile)
         val options = OrtSession.SessionOptions().apply {
             setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
             setIntraOpNumThreads(
@@ -102,7 +134,13 @@ class FastConformerEngine @Inject constructor() {
             setInterOpNumThreads(1)
         }
         val ortSession = try {
-            env.createSession(modelPath, options)
+            try {
+                env.createSession(modelPath, options)
+            } catch (oom: OutOfMemoryError) {
+                throw IllegalStateException("Not enough memory to load the model", oom)
+            } catch (throwable: Throwable) {
+                throw IllegalStateException("ONNX Runtime could not load the model", throwable)
+            }
         } finally {
             options.close()
         }
@@ -117,7 +155,9 @@ class FastConformerEngine @Inject constructor() {
         decoder = CtcDecoder(vocab)
         loadedKey = key
         lastLoadTimeMs = SystemClock.elapsedRealtime() - startedAt
-        Log.i(TAG, "model loaded in ${lastLoadTimeMs}ms (inputs=$inputs): $modelPath")
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "model loaded in ${lastLoadTimeMs}ms (inputs=$inputs): $modelPath")
+        }
     }
 
     private fun runInference(samples: FloatArray): String {
@@ -135,13 +175,50 @@ class FastConformerEngine @Inject constructor() {
                 ortSession.run(inputs).use { result ->
                     val output = result.get(0) as OnnxTensor
                     val shape = (output.info as TensorInfo).shape
+                    check(shape.size >= 2) { "Unexpected model output rank ${shape.size}" }
                     val frames = shape[shape.size - 2].toInt()
                     val classes = shape[shape.size - 1].toInt()
+                    check(frames > 0 && classes > 0) { "Model returned an empty output" }
                     val logProbs = output.floatBuffer
                         ?: error("Unexpected non-float model output")
                     return activeDecoder.decode(logProbs, frames, classes)
                 }
             }
+        }
+    }
+
+    private fun limitAudio(samples: FloatArray): FloatArray {
+        if (samples.size < MIN_AUDIO_SAMPLES) {
+            throw IllegalArgumentException("Audio is too short: ${samples.size} samples")
+        }
+        if (samples.size <= MAX_AUDIO_SAMPLES) return samples
+        if (BuildConfig.DEBUG) {
+            Log.w(
+                TAG,
+                "audio truncated from ${samples.size} to $MAX_AUDIO_SAMPLES samples " +
+                    "($MAX_AUDIO_SECONDS s limit)",
+            )
+        }
+        return samples.copyOf(MAX_AUDIO_SAMPLES)
+    }
+
+    /**
+     * `availMem` includes reclaimable page cache, so it is the closest practical
+     * estimate of what the native allocator can get. The graph itself plus the
+     * inference arena needs roughly the file size again, plus headroom for the
+     * preprocessor and decoder buffers.
+     */
+    private fun requireMemoryFor(modelFile: File) {
+        val manager = context.getSystemService(ActivityManager::class.java) ?: return
+        val info = ActivityManager.MemoryInfo()
+        if (!runCatching { manager.getMemoryInfo(info) }.isSuccess) return
+
+        val required = modelFile.length() + MEMORY_HEADROOM_BYTES
+        if (info.lowMemory || info.availMem < required) {
+            throw IllegalStateException(
+                "Insufficient memory to load the model: need ~${required / MIB}MB, " +
+                    "available ${info.availMem / MIB}MB",
+            )
         }
     }
 
@@ -158,5 +235,15 @@ class FastConformerEngine @Inject constructor() {
         const val MAX_THREADS = 4
         const val DEFAULT_AUDIO_INPUT = "audio_signal"
         const val DEFAULT_LENGTH_INPUT = "length"
+
+        const val SAMPLE_RATE = 16_000
+        const val MAX_AUDIO_SECONDS = 15
+        const val MAX_AUDIO_SAMPLES = SAMPLE_RATE * MAX_AUDIO_SECONDS
+
+        /** ~250 ms; shorter than this is an accidental tap, not a recitation. */
+        const val MIN_AUDIO_SAMPLES = SAMPLE_RATE / 4
+
+        const val MEMORY_HEADROOM_BYTES = 192L * 1024L * 1024L
+        const val MIB = 1024L * 1024L
     }
 }

@@ -91,7 +91,8 @@ class QuranRecorder @Inject constructor() {
 
     companion object {
         const val SAMPLE_RATE = 16_000
-        const val MAX_DURATION_MS = 25_000L
+        /** Matches the engine's 15 s inference limit; longer clips are never used. */
+        const val MAX_DURATION_MS = 15_000L
 
         private const val CHANNEL = AudioFormat.CHANNEL_IN_MONO
         private const val ENCODING = AudioFormat.ENCODING_PCM_16BIT

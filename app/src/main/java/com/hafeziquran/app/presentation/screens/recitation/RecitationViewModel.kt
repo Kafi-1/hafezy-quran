@@ -1,8 +1,10 @@
 package com.hafeziquran.app.presentation.screens.recitation
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hafeziquran.app.BuildConfig
 import com.hafeziquran.app.core.constants.AppConstants
 import com.hafeziquran.app.data.download.DownloadStatus
 import com.hafeziquran.app.data.recitation.AyahCheckResult
@@ -24,6 +26,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,6 +64,7 @@ data class RecitationUiState(
     val modelDownloaded: Boolean = false,
     val modelSizeBytes: Long = 0L,
     val modelReady: Boolean = false,
+    val modelPreparing: Boolean = false,
     val download: DownloadStatus = DownloadStatus.Idle,
     val pageFinished: Boolean = false,
     val metrics: RecitationMetrics = RecitationMetrics(),
@@ -104,6 +108,8 @@ class RecitationViewModel @Inject constructor(
     private var routerJob: Job? = null
     private var workerJob: Job? = null
     private var pendingCountJob: Job? = null
+    private var prepareJob: Job? = null
+    private var preloadJob: Job? = null
 
     private val indicatorLock = Any()
     private val pendingTargets = LinkedHashMap<Long, Int>()
@@ -144,12 +150,62 @@ class RecitationViewModel @Inject constructor(
     fun previousPage() = setPage(_state.value.page - 1)
 
     fun startListening() {
-        if (_state.value.isListening || pageAyahs.isEmpty()) return
+        if (_state.value.isListening || _state.value.modelPreparing) return
+        if (pageAyahs.isEmpty()) return
         // modelDownloaded is maintained on the IO dispatcher by observeModel(), so
         // this guard does no file I/O on the main thread.
         if (!_state.value.modelDownloaded) {
             _state.update {
                 it.copy(errorMessage = "লাইভ সবকের জন্য মডেলটি আগে ডাউনলোড করুন")
+            }
+            return
+        }
+
+        if (engine.isReady) {
+            if (!_state.value.modelReady) {
+                _state.update { it.copy(modelReady = true) }
+            }
+            startCapture()
+            return
+        }
+
+        // Never open the microphone while the ONNX session is being created: the
+        // first segment would queue against an unloaded model. The UI shows
+        // "মডেল প্রস্তুত হচ্ছে..." until this completes or fails.
+        _state.update { it.copy(modelPreparing = true, errorMessage = null) }
+        prepareJob?.cancel()
+        prepareJob = viewModelScope.launch {
+            val loaded = try {
+                loadModelIfNeeded()
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (throwable: Throwable) {
+                Log.w(TAG, "Model preparation failed", throwable)
+                false
+            }
+            // The user may have pressed stop while the graph was loading.
+            ensureActive()
+            if (!loaded) {
+                _state.update {
+                    it.copy(
+                        modelPreparing = false,
+                        modelReady = false,
+                        errorMessage = MODEL_PREPARE_ERROR,
+                    )
+                }
+                return@launch
+            }
+            _state.update { it.copy(modelPreparing = false) }
+            startCapture()
+        }
+    }
+
+    private fun startCapture() {
+        if (_state.value.isListening) return
+        if (pageAyahs.isEmpty()) return
+        if (!engine.isReady) {
+            _state.update {
+                it.copy(modelReady = false, errorMessage = MODEL_PREPARE_ERROR)
             }
             return
         }
@@ -167,8 +223,6 @@ class RecitationViewModel @Inject constructor(
                 )
             }
         }
-
-        preloadModelIfNeeded()
 
         val sessionQueue = AyahProcessingQueue()
         queue = sessionQueue
@@ -267,11 +321,15 @@ class RecitationViewModel @Inject constructor(
                         }
                     },
                     onError = { throwable ->
+                        Log.w(TAG, "Microphone capture failed", throwable)
+                        // Tear the session down before surfacing the message, so the
+                        // worker/channel do not outlive a microphone that failed.
                         viewModelScope.launch {
+                            stopListening()
                             _state.update {
                                 it.copy(
-                                    isListening = false,
-                                    errorMessage = "মাইক্রোফোন চালু করা যায়নি: ${throwable.message}",
+                                    errorMessage = "মাইক্রোফোন চালু করা যায়নি। " +
+                                        "অনুমতি ও মাইক পরীক্ষা করে আবার চেষ্টা করুন।",
                                 )
                             }
                         }
@@ -305,7 +363,13 @@ class RecitationViewModel @Inject constructor(
     }
 
     fun stopListening() {
-        if (!_state.value.isListening && recorderJob == null) return
+        val preparing = _state.value.modelPreparing
+        if (!_state.value.isListening && recorderJob == null && prepareJob == null && !preparing) {
+            return
+        }
+
+        prepareJob?.cancel()
+        prepareJob = null
 
         // Invalidate this session first: a worker callback still unwinding must not
         // mutate the state of the session the user has just left.
@@ -354,6 +418,7 @@ class RecitationViewModel @Inject constructor(
             }
             current.copy(
                 isListening = false,
+                modelPreparing = false,
                 processingSegmentIds = emptySet(),
                 queuedSegmentIds = emptySet(),
                 queueBacklogCount = 0,
@@ -383,6 +448,23 @@ class RecitationViewModel @Inject constructor(
     }
 
     fun cancelDownload() = modelRepository.cancelDownload()
+
+    /** Deletes a model that failed to load and starts a fresh download. */
+    fun redownloadModel() {
+        stopListening()
+        viewModelScope.launch {
+            modelRepository.delete()
+            _state.update {
+                it.copy(
+                    modelDownloaded = false,
+                    modelReady = false,
+                    modelPreparing = false,
+                    errorMessage = null,
+                )
+            }
+            modelRepository.startDownload()
+        }
+    }
 
     private fun loadPage(physicalPage: Int) {
         stopListening()
@@ -416,13 +498,13 @@ class RecitationViewModel @Inject constructor(
                             ayahStates = emptyMap(),
                         )
                     }
-                    preloadModelIfNeeded()
+                    if (_state.value.modelDownloaded) preloadModelIfNeeded()
                 },
-                onFailure = { throwable ->
+                onFailure = {
                     _state.update {
                         it.copy(
                             contentLoading = false,
-                            errorMessage = throwable.message ?: "পৃষ্ঠা লোড করা যায়নি",
+                            errorMessage = "পৃষ্ঠা লোড করা যায়নি। আবার চেষ্টা করুন।",
                         )
                     }
                 },
@@ -450,7 +532,9 @@ class RecitationViewModel @Inject constructor(
                         )
                     }
                     if (snapshot.status is DownloadStatus.Completed && !snapshot.downloaded) {
-                        modelRepository.discardInvalid()
+                        viewModelScope.launch(Dispatchers.IO) {
+                            modelRepository.discardInvalid()
+                        }
                         _state.update {
                             it.copy(errorMessage = "ডাউনলোড করা মডেলটি সঠিক নয়। আবার ডাউনলোড করুন।")
                         }
@@ -467,14 +551,44 @@ class RecitationViewModel @Inject constructor(
         }
     }
 
+    private suspend fun loadModelIfNeeded(): Boolean {
+        if (engine.isReady) {
+            if (!_state.value.modelReady) _state.update { it.copy(modelReady = true) }
+            return true
+        }
+        // Resolving the file paths stats them; keep that off the main thread.
+        val files = withContext(Dispatchers.IO) { modelRepository.files() } ?: return false
+        val loaded = engine.preload(files.modelPath, files.vocabPath)
+        if (loaded.isFailure) {
+            if (BuildConfig.DEBUG) {
+                Log.w(TAG, "Model preload failed", loaded.exceptionOrNull())
+            }
+            _state.update { it.copy(modelReady = false) }
+            return false
+        }
+        _state.update { it.copy(modelReady = true) }
+        return true
+    }
+
     private fun preloadModelIfNeeded() {
-        if (engine.isReady) return
-        viewModelScope.launch {
-            // Resolving the file paths stats them; keep that off the main thread.
-            val files = withContext(Dispatchers.IO) { modelRepository.files() }
-                ?: return@launch
-            engine.preload(files.modelPath, files.vocabPath).onSuccess {
-                _state.update { it.copy(modelReady = true) }
+        if (engine.isReady) {
+            if (!_state.value.modelReady) _state.update { it.copy(modelReady = true) }
+            return
+        }
+        if (preloadJob?.isActive == true) return
+        preloadJob = viewModelScope.launch {
+            val loaded = try {
+                loadModelIfNeeded()
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (throwable: Throwable) {
+                Log.w(TAG, "Model preload failed", throwable)
+                false
+            }
+            if (!loaded) {
+                _state.update {
+                    it.copy(modelReady = false, errorMessage = MODEL_PREPARE_ERROR)
+                }
             }
         }
     }
@@ -696,5 +810,10 @@ class RecitationViewModel @Inject constructor(
     companion object {
         const val PAGE_ARG = "page"
         const val NO_PAGE = -1
+
+        private const val TAG = "LIVE_SOBOK_VM"
+        private const val MODEL_PREPARE_ERROR =
+            "ভয়েস মডেল প্রস্তুত করা যায়নি। ফোনে পর্যাপ্ত মেমরি আছে কিনা দেখে " +
+                "মডেলটি আবার ডাউনলোড করে চেষ্টা করুন।"
     }
 }

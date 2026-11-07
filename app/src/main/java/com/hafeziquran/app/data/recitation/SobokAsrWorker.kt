@@ -45,7 +45,12 @@ class SobokAsrWorker @Inject constructor(
                 Log.w(TAG, "Dequeue listener failed", throwable)
             }
 
-            val model = files()
+            val model = try {
+                files()
+            } catch (throwable: Throwable) {
+                Log.w(TAG, "Model file lookup failed", throwable)
+                null
+            }
             if (model == null) {
                 deliverFailure(
                     segment,

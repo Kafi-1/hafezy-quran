@@ -24,9 +24,10 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-enum class SobokPhase { IDLE, RECORDING, PROCESSING, RESULT, ERROR }
+enum class SobokPhase { IDLE, PREPARING, RECORDING, PROCESSING, RESULT, ERROR }
 
 data class SobokUiState(
     val modelDownloaded: Boolean = false,
@@ -95,7 +96,9 @@ class SobokViewModel @Inject constructor(
                         )
                     }
                     if (snapshot.status is DownloadStatus.Completed && !snapshot.downloaded) {
-                        modelRepository.discardInvalid()
+                        viewModelScope.launch(Dispatchers.IO) {
+                            modelRepository.discardInvalid()
+                        }
                         _state.update {
                             it.copy(
                                 errorMessage = "ডাউনলোড করা মডেলটি সঠিক নয়। আবার ডাউনলোড করুন।",
@@ -104,7 +107,9 @@ class SobokViewModel @Inject constructor(
                     }
                     if (snapshot.downloaded) {
                         // Reclaim the superseded base model once tiny is valid.
-                        modelRepository.cleanupLegacyModel()
+                        viewModelScope.launch(Dispatchers.IO) {
+                            modelRepository.cleanupLegacyModel()
+                        }
                     }
                 }
         }
@@ -194,7 +199,7 @@ class SobokViewModel @Inject constructor(
     fun toggleRecording() {
         when (_state.value.phase) {
             SobokPhase.RECORDING -> recorder.stop()
-            SobokPhase.PROCESSING -> Unit
+            SobokPhase.PREPARING, SobokPhase.PROCESSING -> Unit
             else -> startRecording()
         }
     }
@@ -202,11 +207,17 @@ class SobokViewModel @Inject constructor(
     private fun startRecording() {
         val current = _state.value
         if (!current.modelDownloaded || current.ayahText.isBlank()) return
+        if (current.phase == SobokPhase.PREPARING ||
+            current.phase == SobokPhase.RECORDING ||
+            current.phase == SobokPhase.PROCESSING
+        ) {
+            return
+        }
 
         recordingJob?.cancel()
         _state.update {
             it.copy(
-                phase = SobokPhase.RECORDING,
+                phase = SobokPhase.PREPARING,
                 elapsedSeconds = 0,
                 result = null,
                 errorMessage = null,
@@ -215,17 +226,30 @@ class SobokViewModel @Inject constructor(
 
         recordingJob = viewModelScope.launch {
             try {
+                val files = withContext(Dispatchers.IO) { modelRepository.files() }
+                if (files == null) {
+                    fail("সবক মডেল পাওয়া যায়নি। মডেলটি আবার ডাউনলোড করুন।")
+                    return@launch
+                }
+
+                // Load (or reuse) the ONNX session before opening the mic: a
+                // failed native load must surface as a message, not a crash.
+                if (engine.preload(files.modelPath, files.vocabPath).isFailure) {
+                    fail(
+                        "ভয়েস মডেল লোড করা যায়নি। ফোনে পর্যাপ্ত মেমরি আছে কিনা দেখে " +
+                            "আবার চেষ্টা করুন, অথবা মডেলটি পুনরায় ডাউনলোড করুন।",
+                    )
+                    return@launch
+                }
+
+                _state.update { it.copy(phase = SobokPhase.RECORDING) }
+
                 val samples = recorder.record(QuranRecorder.MAX_DURATION_MS) { elapsedMs ->
                     _state.update { it.copy(elapsedSeconds = elapsedMs / 1000) }
                 }
 
                 if (samples.size < MIN_SAMPLES) {
-                    _state.update {
-                        it.copy(
-                            phase = SobokPhase.ERROR,
-                            errorMessage = "খুব কম শব্দ রেকর্ড হয়েছে। মাইক্রোফোনের কাছে গিয়ে আবার চেষ্টা করুন।",
-                        )
-                    }
+                    fail("খুব কম শব্দ রেকর্ড হয়েছে। মাইক্রোফোনের কাছে গিয়ে আবার চেষ্টা করুন।")
                     return@launch
                 }
 
@@ -236,26 +260,10 @@ class SobokViewModel @Inject constructor(
                     )
                 }
 
-                val files = modelRepository.files()
-                if (files == null) {
-                    _state.update {
-                        it.copy(
-                            phase = SobokPhase.ERROR,
-                            errorMessage = "সবক মডেল পাওয়া যায়নি। মডেলটি আবার ডাউনলোড করুন।",
-                        )
-                    }
-                    return@launch
-                }
-
                 engine.transcribe(files.modelPath, files.vocabPath, samples.toAsrSamples()).fold(
                     onSuccess = { recognized ->
                         if (recognized.isBlank()) {
-                            _state.update {
-                                it.copy(
-                                    phase = SobokPhase.ERROR,
-                                    errorMessage = "কোনো তেলাওয়াত সনাক্ত করা যায়নি। আরও স্পষ্টভাবে আবার চেষ্টা করুন।",
-                                )
-                            }
+                            fail("কোনো তেলাওয়াত সনাক্ত করা যায়নি। আরও স্পষ্টভাবে আবার চেষ্টা করুন।")
                         } else {
                             val surahNumber = current.selectedSurah?.number
                             val ignoreBismillah = current.selectedAyah == 1 &&
@@ -275,25 +283,19 @@ class SobokViewModel @Inject constructor(
                         }
                     },
                     onFailure = {
-                        _state.update {
-                            it.copy(
-                                phase = SobokPhase.ERROR,
-                                errorMessage = "প্রসেস করা যায়নি। মডেলটি আবার ডাউনলোড করে চেষ্টা করুন।",
-                            )
-                        }
+                        fail("প্রসেস করা যায়নি। মডেলটি আবার ডাউনলোড করে চেষ্টা করুন।")
                     },
                 )
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (throwable: Throwable) {
-                _state.update {
-                    it.copy(
-                        phase = SobokPhase.ERROR,
-                        errorMessage = "রেকর্ডিং ব্যর্থ হয়েছে। মাইক্রোফোনের অনুমতি ও আবার চেষ্টা করুন।",
-                    )
-                }
+                fail("রেকর্ডিং ব্যর্থ হয়েছে। মাইক্রোফোনের অনুমতি ও আবার চেষ্টা করুন।")
             }
         }
+    }
+
+    private fun fail(message: String) {
+        _state.update { it.copy(phase = SobokPhase.ERROR, errorMessage = message) }
     }
 
     fun resetResult() {

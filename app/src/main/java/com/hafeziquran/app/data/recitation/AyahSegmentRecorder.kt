@@ -222,7 +222,8 @@ class AyahSegmentRecorder @Inject constructor() {
         private const val START_SPEECH_FRAMES = 2
         private const val PRE_ROLL_FRAMES = 12 // 240 ms before trigger
         private const val POST_ROLL_FRAMES = 12 // keep 240 ms of tail silence
-        private const val MAX_SEGMENT_SAMPLES = SAMPLE_RATE * 20 // hard 20 s cap
+        // Matches the engine's 15 s truncation limit so no captured audio is lost.
+        private const val MAX_SEGMENT_SAMPLES = SAMPLE_RATE * 15
 
         private const val NOISE_FLOOR_INITIAL = 0.004f
         private const val NOISE_FLOOR_MIN = 0.0005f

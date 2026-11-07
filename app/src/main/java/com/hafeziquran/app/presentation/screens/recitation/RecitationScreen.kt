@@ -200,13 +200,13 @@ fun RecitationScreen(
                 StartStopBar(
                     isListening = state.isListening,
                     pageFinished = state.pageFinished,
+                    preparing = state.modelPreparing,
                     onToggle = {
-                        if (state.isListening) {
-                            viewModel.stopListening()
-                        } else if (hasPermission) {
-                            viewModel.startListening()
-                        } else {
-                            requestMic()
+                        when {
+                            state.modelPreparing -> Unit
+                            state.isListening -> viewModel.stopListening()
+                            hasPermission -> viewModel.startListening()
+                            else -> requestMic()
                         }
                     },
                 )
@@ -274,6 +274,7 @@ fun RecitationScreen(
                         )
                     },
                     onDismissError = viewModel::dismissError,
+                    onRedownloadModel = viewModel::redownloadModel,
                 )
             }
 
@@ -335,6 +336,7 @@ private fun RecitationBody(
     onRequestPermission: () -> Unit,
     onOpenSettings: () -> Unit,
     onDismissError: () -> Unit,
+    onRedownloadModel: () -> Unit,
 ) {
     val spacing = LocalSpacing.current
     val listState = rememberLazyListState()
@@ -346,7 +348,11 @@ private fun RecitationBody(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        StatusHeader(state = state, onDismissError = onDismissError)
+        StatusHeader(
+            state = state,
+            onDismissError = onDismissError,
+            onRedownloadModel = onRedownloadModel,
+        )
 
         if (!hasPermission) {
             PermissionBanner(
@@ -387,6 +393,7 @@ private fun RecitationBody(
 private fun StatusHeader(
     state: RecitationUiState,
     onDismissError: () -> Unit,
+    onRedownloadModel: () -> Unit,
 ) {
     val spacing = LocalSpacing.current
     val chip = statusAppearance(state)
@@ -427,7 +434,9 @@ private fun StatusHeader(
             }
         }
 
-        if (state.modelDownloaded && !state.modelReady) {
+        if (state.modelPreparing ||
+            (state.modelDownloaded && !state.modelReady && state.errorMessage == null)
+        ) {
             Text(
                 text = "মডেল প্রস্তুত হচ্ছে…",
                 style = MaterialTheme.typography.labelSmall,
@@ -473,6 +482,11 @@ private fun StatusHeader(
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.weight(1f),
                     )
+                    if (!state.modelReady) {
+                        TextButton(onClick = onRedownloadModel) {
+                            Text("আবার ডাউনলোড", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
                     TextButton(onClick = onDismissError) {
                         Text("ঠিক আছে", style = MaterialTheme.typography.labelSmall)
                     }
@@ -820,6 +834,7 @@ private fun wordColors(): WordColors {
 private fun StartStopBar(
     isListening: Boolean,
     pageFinished: Boolean,
+    preparing: Boolean,
     onToggle: () -> Unit,
 ) {
     val spacing = LocalSpacing.current
@@ -836,6 +851,7 @@ private fun StartStopBar(
         ) {
             Button(
                 onClick = onToggle,
+                enabled = !preparing,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -855,6 +871,7 @@ private fun StartStopBar(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = when {
+                        preparing -> "মডেল প্রস্তুত হচ্ছে..."
                         isListening -> "রেকর্ডিং থামান"
                         pageFinished -> "আবার শুরু করুন"
                         else -> "শোনা শুরু করুন"
